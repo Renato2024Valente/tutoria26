@@ -1,0 +1,57 @@
+
+{% extends 'base.html' %}
+{% block title %}Minhas tutorias{% endblock %}
+{% block content %}
+<h2 class="h5 mb-3">Minhas tutorias</h2>
+<div class="row g-3">
+  {% for t in tutorias %}
+  <div class="col-12"><div class="card"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <div class="fw-bold">{{t.nome_aluno}} <span class="badge text-bg-primary">{{t.serie}}</span></div>
+        <div class="small text-muted">{{ t.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" href="/form?id={{t.id}}">Editar</a>
+        <a class="btn btn-outline-secondary btn-sm" href="/form?id={{t.id}}&duplicar=1">Duplicar</a>
+        <button class="btn btn-outline-danger btn-sm" onclick="delTutoria({{t.id}})">Excluir</button>
+      </div>
+    </div>
+    <hr>
+    <div id="print-{{t.id}}" class="printable">
+      <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
+      <div class="row small">
+        <div class="col-6"><b>Aluno:</b> {{t.nome_aluno}}</div>
+        <div class="col-3"><b>Série:</b> {{t.serie}}</div>
+        <div class="col-3"><b>Data/Hora:</b> {{ t.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+        <div class="col-6"><b>Telefone aluno:</b> {{t.tel_aluno or '-'}}</div>
+        <div class="col-6"><b>Telefone responsável:</b> {{t.tel_resp or '-'}}</div>
+        <div class="col-12 mt-2"><b>Projeto de Vida:</b><br>{{t.projeto_vida or '-'}}</div>
+        <div class="col-12 mt-2"><b>Descrições:</b><br>{{t.descricoes or '-'}}</div>
+        <div class="col-12 mt-2"><b>Ocorrências:</b> {{t.ocorrencias or '-'}}</div>
+        <div class="col-12 mt-2"><b>Assinatura do aluno:</b><br>{% if t.assinatura %}<img src="{{t.assinatura}}" style="max-width:280px;border:1px solid #000;">{% else %}-{% endif %}</div>
+        <div class="col-12 mt-3">
+          <div class="p-3 rounded-2" style="border:2px dashed #1976d2; background:#f4f8ff;">
+            <div class="fw-bold" style="color:#1976d2;">{{ t.carimbo_texto or 'ÊXITO VISTADO' }}</div>
+            <div class="small"><b>Responsável:</b> {{ t.carimbo_resp or '—' }}</div>
+            <div class="small"><b>Instituição:</b> {{ t.carimbo_inst or '—' }}</div>
+            <div class="small"><b>Contato:</b> {{ t.carimbo_contato or '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div></div>
+  {% else %}
+  <div class="col-12"><div class="alert alert-info">Você ainda não tem tutorias. Crie em <a href="/form">Nova Tutoria</a>.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function delTutoria(id){
+  if(!confirm('Excluir definitivamente esta tutoria?')) return;
+  try{ await axios.delete(`/api/tutorias/${id}`); location.reload(); }catch(e){ alert('Erro ao excluir.'); }
+}
+</script>
+{% endblock %}

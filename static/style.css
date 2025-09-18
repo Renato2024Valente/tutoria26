@@ -1,0 +1,180 @@
+/* =========================
+   TUTORIA DIGITAL — THEME 2025 (Dark Navy)
+   ========================= */
+
+/* ---------- Paleta & tokens ---------- */
+:root{
+  --bg-1:#081422;         /* fundo profundo */
+  --bg-2:#0b1f3b;         /* gradiente marinho */
+  --surface:rgba(16, 33, 64, .72); /* carta translúcida */
+  --surface-bd:rgba(170, 200, 255, .12);
+  --elev:0 14px 36px rgba(0,0,0,.55);
+
+  --text-strong:#e8eef8;
+  --text-soft:#a7b8d7;
+  --line:#1b2e56;
+
+  --primary:#1558c9;      /* azul fechado */
+  --primary-2:#1f7ae6;    /* hover */
+  --success:#1a7f3e;
+  --warning:#e0a800;
+  --danger:#c62828;
+
+  --radius:14px;
+}
+
+/* ---------- Base ---------- */
+html,body{height:100%;}
+body{
+  background:
+    radial-gradient(1100px 700px at -10% -20%, rgba(255,255,255,.05), transparent 60%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2)) fixed;
+  color:var(--text-strong);
+  background-attachment: fixed;
+}
+.container{max-width:1100px;}
+h1,h2,h3,h4,h5{color:var(--text-strong);}
+.small,.text-muted{color:var(--text-soft)!important;}
+hr{border-color:rgba(255,255,255,.09);}
+
+/* ---------- Navbar (vidro fosco) ---------- */
+.navbar{
+  background:rgba(7,15,32,.55)!important;
+  backdrop-filter: blur(8px) saturate(1.25);
+  border-bottom:1px solid rgba(255,255,255,.06)!important;
+}
+.navbar .navbar-brand,.navbar .navbar-text{color:var(--text-strong)!important;}
+.navbar .btn{color:var(--text-strong);border-color:rgba(255,255,255,.22);}
+.navbar .btn:hover{background:rgba(255,255,255,.09)}
+
+/* ---------- Cards ---------- */
+.card{
+  background:var(--surface)!important;
+  border:1px solid var(--surface-bd)!important;
+  box-shadow:var(--elev);
+  color:var(--text-strong);
+  border-radius:var(--radius);
+}
+.card .card-header{
+  background:rgba(255,255,255,.03)!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  color:var(--text-strong);
+}
+.card-body{padding:1.1rem 1.25rem;}
+
+/* ---------- Formulários ---------- */
+.form-label{color:#dbe6ff;}
+.form-control,.form-select,.form-check-input{
+  background:rgba(255,255,255,.07)!important;
+  border:1px solid rgba(255,255,255,.20)!important;
+  color:var(--text-strong)!important;
+  border-radius:12px;
+}
+.form-control::placeholder{color:rgba(210,220,245,.6)}
+.form-control:focus,.form-select:focus{
+  border-color:var(--primary)!important;
+  box-shadow:0 0 0 .2rem rgba(21,88,201,.28)!important;
+  background:rgba(255,255,255,.09)!important;
+}
+
+/* --- Select dropdown escuro (Chrome/Edge/Firefox) --- */
+.form-select option,
+select option{
+  background-color:#0c1734;
+  color:#e8eef8;
+}
+.form-select optgroup{
+  background:#0c1734;color:#a7b8d7;
+}
+/* seta clara */
+.form-select{
+  background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='%23cfe0ff' d='M3.3 5.5l4.2 4.2 4.2-4.2 1.1 1.1-5.3 5.3L2.2 6.6z'/%3e%3c/svg%3e")!important;
+  background-repeat:no-repeat!important;
+  background-position:right .75rem center!important;
+  background-size:16px 16px!important;
+  padding-right:2rem!important;
+}
+
+/* --- Checkboxes/Radio 2025: VISÍVEIS --- */
+.form-check-input{
+  width:1.15rem;height:1.15rem;
+  accent-color: var(--primary);       /* suporte moderno */
+  border-width:2px!important;
+}
+.form-check-input:focus{box-shadow:0 0 0 .18rem rgba(31,122,230,.35)!important;}
+.form-check-input:checked{background-color:var(--primary)!important;border-color:var(--primary)!important;}
+.form-check-label{color:var(--text-strong)}
+/* melhora contraste quando disabled (ex. na visualização do PDF html) */
+.form-check-input[disabled]{opacity:.7;border-color:rgba(255,255,255,.35)!important}
+
+/* ---------- Botões ---------- */
+.btn{
+  border-radius:12px;
+  transition:transform .08s ease, box-shadow .2s ease, background .15s ease;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--primary)!important;border-color:var(--primary)!important;}
+.btn-primary:hover{background:var(--primary-2)!important;border-color:var(--primary-2)!important;}
+.btn-success{background:var(--success)!important;border-color:var(--success)!important;}
+.btn-warning{background:var(--warning)!important;border-color:var(--warning)!important;color:#091324!important;}
+.btn-danger{background:var(--danger)!important;border-color:var(--danger)!important;}
+.btn-outline-primary{color:#d9e8ff!important;border-color:var(--primary)!important;}
+.btn-outline-primary:hover{background:var(--primary)!important;}
+.btn-outline-secondary{color:#d9e8ff!important;border-color:rgba(255,255,255,.28)!important;}
+.btn-outline-secondary:hover{background:rgba(255,255,255,.10)!important;}
+
+/* ---------- Badges ---------- */
+.badge.text-bg-primary{
+  background:linear-gradient(135deg,#144c9f,#1e76d6);
+  color:#fff;border:1px solid rgba(255,255,255,.22);
+}
+
+/* ---------- Tabelas ---------- */
+.table{color:var(--text-strong);border-color:var(--line);}
+.table td,.table th{border-color:var(--line);}
+.table thead th{color:#f0f6ff}
+
+/* ---------- Alertas ---------- */
+.alert{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.18);
+  color:#eaf2ff;
+}
+.alert-success{border-color:rgba(76,175,80,.35);}
+.alert-danger{border-color:rgba(244,67,54,.35);}
+.alert-warning{border-color:rgba(255,193,7,.35);color:#fff8dc;}
+
+/* ---------- Links ---------- */
+a{color:#9ecbff;}
+a:hover{color:#cfe4ff;}
+
+/* ---------- Bloco do CARIMBO ---------- */
+.printable-mini{
+  border:2px dashed var(--primary)!important;
+  background:rgba(21,88,201,.12)!important;
+}
+.azul{color:var(--primary)!important;}
+
+/* ---------- Painel Gestão (layout sutil) ---------- */
+#board .card .small{color:var(--text-soft)!important;}
+#board h3{letter-spacing:.02em}
+
+/* ---------- Scrollbar (WebKit/Chromium/Edge) ---------- */
+*::-webkit-scrollbar{width:12px;height:12px}
+*::-webkit-scrollbar-thumb{background:#1c2f56;border-radius:10px;border:2px solid #0b1430}
+*::-webkit-scrollbar-track{background:#0b1430}
+
+/* ---------- Áreas que DEVEM ser brancas (PDF) ---------- */
+.printable{
+  color:#000!important;background:#fff!important;border:1px solid #aaa!important;box-shadow:none!important;
+}
+.printable *{color:#000!important;}
+/* checkbox pretinho no PDF html */
+.printable input[type="checkbox"]{accent-color:#000;}
+
+/* ---------- Canvas de assinatura ---------- */
+#sigCanvas{
+  background:#fff;
+  border:1px dashed rgba(0,0,0,.25);
+  border-radius:10px;
+}
