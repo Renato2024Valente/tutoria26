@@ -25,21 +25,32 @@ class Tutoria(Base):
     __tablename__ = 'tutorias'
     id = mapped_column(Integer, primary_key=True)
     professor_id = mapped_column(Integer, ForeignKey('users.id'), nullable=False)
+
+    # NOVO
+    nome_tutor = mapped_column(String(120))
+
     nome_aluno = mapped_column(String(150), nullable=False)
     serie = mapped_column(String(20), nullable=False)
     tel_aluno = mapped_column(String(30))
+
+    # legado (não exibido na UI)
     tel_resp = mapped_column(String(30))
-    contatos_extra = mapped_column(Text)
+
+    contatos_extra = mapped_column(Text)  # JSON: [{nome, telefone}]
     projeto_vida = mapped_column(Text)
     descricoes = mapped_column(Text)
-    ocorrencias = mapped_column(Text)
-    assinatura = mapped_column(Text)
+    ocorrencias = mapped_column(Text)     # CSV
+    assinatura = mapped_column(Text)      # base64 PNG
+
     carimbo_resp = mapped_column(String(120))
     carimbo_inst = mapped_column(String(160))
     carimbo_contato = mapped_column(String(160))
     carimbo_texto = mapped_column(String(80))
+    carimbo_obs  = mapped_column(Text)    # NOVO: Observações do carimbo
+
     criado_em = mapped_column(DateTime, default=datetime.utcnow)
     atualizado_em = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     professor = relationship('User', back_populates='tutorias')
 
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///local.db')
@@ -57,8 +68,14 @@ def ensure_schema():
         Base.metadata.create_all(engine)
         cols = {c['name'] for c in insp.get_columns('tutorias')}
     needed = {
-        'contatos_extra': 'TEXT','assinatura': 'TEXT',
-        'carimbo_resp': 'TEXT','carimbo_inst': 'TEXT','carimbo_contato': 'TEXT','carimbo_texto': 'TEXT'
+        'contatos_extra': 'TEXT',
+        'assinatura': 'TEXT',
+        'carimbo_resp': 'TEXT',
+        'carimbo_inst': 'TEXT',
+        'carimbo_contato': 'TEXT',
+        'carimbo_texto': 'TEXT',
+        'carimbo_obs': 'TEXT',   # <- novo campo
+        'nome_tutor': 'TEXT',    # <- novo campo
     }
     with engine.begin() as conn:
         for name, typ in needed.items():
@@ -67,7 +84,12 @@ def ensure_schema():
 ensure_schema()
 
 SessionLocal = scoped_session(sessionmaker(bind=engine, expire_on_commit=False))
-app = Flask(__name__); app.secret_key = SECRET_KEY
+
+app = Flask(__name__)
+app.secret_key = SECRET_KEY
+
+SERIES = ['6A','6B','6C','6D','7A','7B','7C','7D','8A','8B','8C','8D','9A','9B','9C','9D','1EM-A','1EM-B','1EM-C','2EM-A','2TEC','3EM-A','3EM-B']
+OCORRENCIAS = ['Pessoal','Pedagogico','Familia','Prova paulista','Notas Bimestrais','Conflitos/Bullying','Comportamentos','Desatenção','Desrespeito','Emergencial']
 
 def ensure_seed():
     db = SessionLocal()
@@ -78,6 +100,7 @@ def ensure_seed():
     db.commit(); db.close()
 ensure_seed()
 
+# ---------- Auth ----------
 @app.get('/cadastro')
 def cadastro_get():
     if session.get('uid'): return redirect(url_for('form'))
@@ -119,6 +142,7 @@ def logout():
     session.clear()
     return redirect(url_for('login_get'))
 
+# ---------- Views ----------
 @app.get('/')
 def home():
     if session.get('uid'): return redirect(url_for('form'))
@@ -127,7 +151,6 @@ def home():
 @app.get('/form')
 def form():
     if not session.get('uid'): return redirect(url_for('login_get'))
-    from sqlalchemy import select
     db = SessionLocal()
     tid = request.args.get('id')
     duplicar = request.args.get('duplicar') == '1'
@@ -141,15 +164,20 @@ def form():
             class D: pass
             d = D()
             d.id = None
-            d.nome_aluno = record.nome_aluno; d.serie = record.serie
-            d.tel_aluno = record.tel_aluno; d.tel_resp = record.tel_resp
-            d.contatos_extra = record.contatos_extra; d.projeto_vida = record.projeto_vida
-            d.descricoes = record.descricoes; d.ocorrencias = record.ocorrencias
-            d.assinatura = record.assinatura; record = d
-    if record and record.contatos_extra: contatos_json = record.contatos_extra
+            d.nome_tutor = record.nome_tutor
+            d.nome_aluno = record.nome_aluno
+            d.serie = record.serie
+            d.tel_aluno = record.tel_aluno
+            d.contatos_extra = record.contatos_extra
+            d.projeto_vida = record.projeto_vida
+            d.descricoes = record.descricoes
+            d.ocorrencias = record.ocorrencias
+            d.assinatura = record.assinatura
+            record = d
+    if record and record.contatos_extra:
+        contatos_json = record.contatos_extra
     db.close()
-    SERIES = ['6A','6B','6C','6D','7A','7B','7C','7D','8A','8B','8C','8D','9A','9B','9C','9D','1EM-A','1EM-B','1EM-C','2EM-A','2TEC','3EM-A','3EM-B']
-    return render_template('form.html', SERIES=SERIES, record=record, contatos_json=contatos_json)
+    return render_template('form.html', SERIES=SERIES, OCORRENCIAS=OCORRENCIAS, record=record, contatos_json=contatos_json)
 
 @app.get('/lista')
 def lista():
@@ -162,7 +190,7 @@ def lista():
     db.close()
     return render_template('lista.html', tutorias=tutorias)
 
-# Gestão com sessão
+# ---------- Gestão com PIN por sessão ----------
 @app.get('/gestao')
 def gestao_pin():
     if not session.get('uid'): return redirect(url_for('login_get'))
@@ -187,8 +215,10 @@ def gestao_bloquear():
     session.pop('gestao_mode', None)
     return redirect(url_for('gestao_pin'))
 
+# ---------- APIs protegidas por sessão de gestão ----------
 def require_gestao():
-    if not session.get('gestao_mode'): abort(403)
+    if not session.get('gestao_mode'):
+        abort(403)
 
 @app.get('/api/gestao/professores')
 def api_g_professores():
@@ -207,14 +237,24 @@ def api_g_tutorias():
     res = []
     for t in items:
         res.append({
-            'id': t.id, 'professor_id': t.professor_id,
-            'nome_aluno': t.nome_aluno, 'serie': t.serie,
-            'tel_aluno': t.tel_aluno, 'tel_resp': t.tel_resp,
+            'id': t.id,
+            'professor_id': t.professor_id,
+            'nome_tutor': t.nome_tutor,
+            'nome_aluno': t.nome_aluno,
+            'serie': t.serie,
+            'tel_aluno': t.tel_aluno,
             'contatos_extra': json.loads(t.contatos_extra or '[]'),
-            'projeto_vida': t.projeto_vida, 'descricoes': t.descricoes,
+            'projeto_vida': t.projeto_vida,
+            'descricoes': t.descricoes,
             'ocorrencias': (t.ocorrencias or '').split(',') if t.ocorrencias else [],
             'assinatura': t.assinatura or '',
-            'carimbo': {'resp': t.carimbo_resp, 'inst': t.carimbo_inst, 'contato': t.carimbo_contato, 'texto': t.carimbo_texto},
+            'carimbo': {
+                'resp': t.carimbo_resp,
+                'inst': t.carimbo_inst,
+                'contato': t.carimbo_contato,
+                'texto': t.carimbo_texto,
+                'obs': t.carimbo_obs,
+            },
             'criado_em': t.criado_em.isoformat(),
         })
     db.close()
@@ -228,26 +268,35 @@ def api_g_carimbo_all():
     inst = (data.get('inst') or '').strip()
     contato = (data.get('contato') or '').strip()
     texto = (data.get('texto') or 'ÊXITO VISTADO').strip()
-    db = SessionLocal(); n=0
+    obs   = (data.get('obs')   or '').strip()
+    db = SessionLocal()
+    n = 0
     for t in db.query(Tutoria).all():
-        t.carimbo_resp = resp; t.carimbo_inst = inst; t.carimbo_contato = contato; t.carimbo_texto = texto; n+=1
+        t.carimbo_resp = resp
+        t.carimbo_inst = inst
+        t.carimbo_contato = contato
+        t.carimbo_texto = texto
+        t.carimbo_obs = obs
+        n += 1
     db.commit(); db.close()
-    return jsonify({'ok':True,'aplicados':n})
+    return jsonify({'ok': True, 'aplicados': n})
 
 @app.post('/api/gestao/tutorias/<int:tid>/carimbo')
 def api_g_carimbo_one(tid):
     require_gestao()
     data = request.json or {}
-    db = SessionLocal(); t = db.get(Tutoria, tid)
+    db = SessionLocal()
+    t = db.get(Tutoria, tid)
     if not t: db.close(); abort(404)
     t.carimbo_resp = (data.get('resp') or '').strip()
     t.carimbo_inst = (data.get('inst') or '').strip()
     t.carimbo_contato = (data.get('contato') or '').strip()
     t.carimbo_texto = (data.get('texto') or 'ÊXITO VISTADO').strip()
+    t.carimbo_obs = (data.get('obs') or '').strip()
     db.commit(); db.close()
-    return jsonify({'ok':True})
+    return jsonify({'ok': True})
 
-# CRUD professor
+# ---------- CRUD (professor) ----------
 @app.post('/api/tutorias')
 def api_create():
     if not session.get('uid'): abort(401)
@@ -255,48 +304,50 @@ def api_create():
     db = SessionLocal()
     t = Tutoria(
         professor_id=session['uid'],
+        nome_tutor=data.get('nome_tutor','').strip(),
         nome_aluno=data.get('nome_aluno','').strip(),
         serie=data.get('serie','').strip(),
         tel_aluno=data.get('tel_aluno','').strip(),
-        tel_resp=data.get('tel_resp','').strip(),
         contatos_extra=json.dumps(data.get('contatos_extra', []), ensure_ascii=False),
         projeto_vida=data.get('projeto_vida','').strip(),
         descricoes=data.get('descricoes','').strip(),
         ocorrencias=','.join(data.get('ocorrencias', [])),
         assinatura=data.get('assinatura','')
     )
-    db.add(t); db.commit(); rid=t.id; db.close()
-    return jsonify({'ok':True,'id':rid})
+    db.add(t); db.commit(); rid = t.id; db.close()
+    return jsonify({'ok': True, 'id': rid})
 
 @app.put('/api/tutorias/<int:tid>')
 def api_update(tid):
     if not session.get('uid'): abort(401)
     data = request.json or {}
-    db = SessionLocal(); t = db.get(Tutoria, tid)
+    db = SessionLocal()
+    t = db.get(Tutoria, tid)
     if not t: db.close(); abort(404)
     if session.get('role') != 'gestao' and t.professor_id != session['uid']:
         db.close(); abort(403)
+    t.nome_tutor = data.get('nome_tutor','').strip()
     t.nome_aluno = data.get('nome_aluno','').strip()
     t.serie = data.get('serie','').strip()
     t.tel_aluno = data.get('tel_aluno','').strip()
-    t.tel_resp = data.get('tel_resp','').strip()
     t.contatos_extra = json.dumps(data.get('contatos_extra', []), ensure_ascii=False)
     t.projeto_vida = data.get('projeto_vida','').strip()
     t.descricoes = data.get('descricoes','').strip()
     t.ocorrencias = ','.join(data.get('ocorrencias', []))
     t.assinatura = data.get('assinatura','')
     db.commit(); db.close()
-    return jsonify({'ok':True})
+    return jsonify({'ok': True})
 
 @app.delete('/api/tutorias/<int:tid>')
 def api_delete(tid):
     if not session.get('uid'): abort(401)
-    db = SessionLocal(); t = db.get(Tutoria, tid)
+    db = SessionLocal()
+    t = db.get(Tutoria, tid)
     if not t: db.close(); abort(404)
     if session.get('role') != 'gestao' and t.professor_id != session['uid']:
         db.close(); abort(403)
     db.delete(t); db.commit(); db.close()
-    return jsonify({'ok':True})
+    return jsonify({'ok': True})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

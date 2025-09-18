@@ -6,24 +6,29 @@
   <h2 class="h5 mb-0">Painel da Gestão — visão geral</h2>
   <div class="d-flex gap-2">
     <button class="btn btn-outline-primary btn-sm" onclick="carregar()">Atualizar</button>
-    <form method="post" action="/gestao/bloquear" class="d-inline"><button class="btn btn-outline-danger btn-sm">Bloquear Gestão</button></form>
+    <form method="post" action="/gestao/bloquear" class="d-inline">
+      <button class="btn btn-outline-danger btn-sm">Bloquear Gestão</button>
+    </form>
   </div>
 </div>
 
-<div class="card mb-3"><div class="card-body">
-  <h3 class="h6">Carimbo Digital</h3>
-  <div class="row g-2">
-    <div class="col-md-3"><input class="form-control" id="c_resp" placeholder="Responsável"></div>
-    <div class="col-md-3"><input class="form-control" id="c_inst" placeholder="Instituição"></div>
-    <div class="col-md-3"><input class="form-control" id="c_contato" placeholder="Contato (opcional)"></div>
-    <div class="col-md-3"><input class="form-control" id="c_texto" value="ÊXITO VISTADO"></div>
-    <div class="col-12 d-flex flex-wrap gap-2 mt-2">
-      <button class="btn btn-success btn-sm" onclick="aplicarTodas()">Aplicar em todas</button>
-      <button class="btn btn-outline-success btn-sm" onclick="aplicarSelecionadas()">Aplicar nas selecionadas</button>
+<div class="card mb-3">
+  <div class="card-body">
+    <h3 class="h6">Carimbo Digital</h3>
+    <div class="row g-2">
+      <div class="col-md-3"><input class="form-control" id="c_resp" placeholder="Responsável"></div>
+      <div class="col-md-3"><input class="form-control" id="c_inst" placeholder="Instituição"></div>
+      <div class="col-md-3"><input class="form-control" id="c_contato" placeholder="Contato (opcional)"></div>
+      <div class="col-md-3"><input class="form-control" id="c_texto" value="ÊXITO VISTADO"></div>
+      <div class="col-12"><input class="form-control" id="c_obs" placeholder="Observações (opcional)"></div>
+      <div class="col-12 d-flex flex-wrap gap-2 mt-2">
+        <button class="btn btn-success btn-sm" onclick="aplicarTodas()">Aplicar em todas</button>
+        <button class="btn btn-outline-success btn-sm" onclick="aplicarSelecionadas()">Aplicar nas selecionadas</button>
+      </div>
+      <div id="msg" class="mt-2"></div>
     </div>
-    <div id="msg" class="mt-2"></div>
   </div>
-</div></div>
+</div>
 
 <div id="board"></div>
 {% endblock %}
@@ -50,12 +55,14 @@ function campos(){
     inst: document.getElementById('c_inst').value.trim(),
     contato: document.getElementById('c_contato').value.trim(),
     texto: document.getElementById('c_texto').value.trim() || 'ÊXITO VISTADO',
+    obs: document.getElementById('c_obs').value.trim(),
   };
 }
 function chk(id){ return `<input class="form-check-input sel" type="checkbox" data-id="${id}">`; }
 
 async function carregar(){
-  const [profR, itemsR] = await Promise.all([axios.get('/api/gestao/professores'), axios.get('/api/gestao/tutorias')]);
+  const nowQ = { params: { t: Date.now() } };
+  const [profR, itemsR] = await Promise.all([axios.get('/api/gestao/professores', nowQ), axios.get('/api/gestao/tutorias', nowQ)]);
   const profs = {}; (profR.data||[]).forEach(p=>profs[p.id]=p.username);
   const items = itemsR.data || [];
   const byDay = {};
@@ -83,22 +90,36 @@ async function carregar(){
                   <div class="fw-bold">${t.nome_aluno} <span class="badge text-bg-primary">${t.serie}</span></div>
                   <div class="small text-muted">${new Date(t.criado_em).toLocaleString('pt-BR')}</div>
                   <div class="small text-secondary">Professor: <b>${name}</b></div>
+                  <div class="small text-secondary">Tutor: <b>${t.nome_tutor || '—'}</b></div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   ${chk(t.id)}
                   <button class="btn btn-sm btn-outline-primary" onclick="aplicarUm(${t.id})">Carimbar só esta</button>
+                  <button class="btn btn-sm btn-outline-success" onclick="gerarPdfDoElemento('gst-print-${t.id}', 'tutoria-${t.id}.pdf')">PDF</button>
                 </div>
               </div>
-              <div class="small mt-2">
-                <div><b>Projeto de Vida:</b> ${t.projeto_vida||'-'}</div>
-                <div><b>Descrições:</b> ${t.descricoes||'-'}</div>
-                <div><b>Ocorrências:</b> ${(t.ocorrencias||[]).join(', ')||'-'}</div>
-              </div>
-              <div class="p-2 mt-2 rounded-2 printable-mini">
-                <div class="fw-bold azul">${(t.carimbo && t.carimbo.texto)||'—'}</div>
-                <div class="small"><b>Responsável:</b> ${(t.carimbo && t.carimbo.resp)||'—'}</div>
-                <div class="small"><b>Instituição:</b> ${(t.carimbo && t.carimbo.inst)||'—'}</div>
-                <div class="small"><b>Contato:</b> ${(t.carimbo && t.carimbo.contato)||'—'}</div>
+              <div class="printable p-3 mt-2" id="gst-print-${t.id}">
+                <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
+                <div class="row small">
+                  <div class="col-6"><b>Tutor:</b> ${t.nome_tutor || '—'}</div>
+                  <div class="col-6"><b>Aluno:</b> ${t.nome_aluno}</div>
+                  <div class="col-3"><b>Série:</b> ${t.serie}</div>
+                  <div class="col-3"><b>Data/Hora:</b> ${new Date(t.criado_em).toLocaleString('pt-BR')}</div>
+                  <div class="col-6"><b>Telefone aluno:</b> ${t.tel_aluno || '—'}</div>
+                  <div class="col-12 mt-2"><b>Projeto de Vida:</b><br>${t.projeto_vida || '-'}</div>
+                  <div class="col-12 mt-2"><b>Descrições (problemas e orientações):</b><br>${t.descricoes || '-'}</div>
+                  <div class="col-12 mt-2"><b>Ocorrências:</b> ${(t.ocorrencias||[]).join(', ') || '-'}</div>
+                  <div class="col-12 mt-2"><b>Assinatura do aluno:</b><br>${t.assinatura ? `<img src="${t.assinatura}" style="max-width:280px;border:1px solid #000;">` : '-'}</div>
+                  <div class="col-12 mt-3">
+                    <div class="p-3 rounded-2" style="border:2px dashed #1976d2; background:#f4f8ff;">
+                      <div class="fw-bold" style="color:#1976d2;">${(t.carimbo && t.carimbo.texto) || 'ÊXITO VISTADO'}</div>
+                      <div class="small"><b>Responsável:</b> ${(t.carimbo && t.carimbo.resp) || '—'}</div>
+                      <div class="small"><b>Instituição:</b> ${(t.carimbo && t.carimbo.inst) || '—'}</div>
+                      <div class="small"><b>Contato:</b> ${(t.carimbo && t.carimbo.contato) || '—'}</div>
+                      <div class="small"><b>Observações:</b> ${(t.carimbo && t.carimbo.obs) || '—'}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -113,18 +134,64 @@ async function carregar(){
         </div>
       `;
     }).join('');
-    return `<div class="mb-4"><h3 class="h6 text-uppercase text-secondary mb-2">${diaLabel}</h3>${sections || '<div class="alert alert-info">Sem registros.</div>'}</div>`;
+    return `
+      <div class="mb-4">
+        <h3 class="h6 text-uppercase text-secondary mb-2">${diaLabel}</h3>
+        ${sections || '<div class="alert alert-info">Sem registros.</div>'}
+      </div>
+    `;
   }).join('');
 }
 
-function selecionados(){ return Array.from(document.querySelectorAll('.sel:checked')).map(x=>Number(x.getAttribute('data-id'))); }
-async function aplicarTodas(){ const c=campos(); try{ await axios.post('/api/gestao/carimbo', c); toast(true,'Carimbo aplicado em todas.'); carregar(); }catch(e){ console.error(e); toast(false,'Erro ao aplicar em todas.'); } }
-async function aplicarSelecionadas(){
-  const ids = selecionados(); if(!ids.length){ toast(false,'Selecione pelo menos uma tutoria.'); return; }
-  const c=campos(); try{ await Promise.all(ids.map(id=>axios.post(`/api/gestao/tutorias/${id}/carimbo`, c))); toast(true,'Carimbo aplicado nas selecionadas.'); carregar(); }catch(e){ console.error(e); toast(false,'Erro.'); }
+function selecionados(){
+  return Array.from(document.querySelectorAll('.sel:checked')).map(x=>Number(x.getAttribute('data-id')));
 }
-async function aplicarUm(id){ const c=campos(); try{ await axios.post(`/api/gestao/tutorias/${id}/carimbo`, c); toast(true,'Carimbado!'); carregar(); }catch(e){ console.error(e); toast(false,'Erro.'); } }
-
+async function aplicarTodas(){
+  const c = campos();
+  try{
+    const r = await axios.post('/api/gestao/carimbo', c, {headers:{'Content-Type':'application/json'}});
+    toast(true, `Carimbo aplicado em ${r.data?.aplicados ?? 0} tutorias.`);
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao aplicar em todas.'); }
+}
+async function aplicarSelecionadas(){
+  const ids = selecionados();
+  if(!ids.length){ toast(false,'Selecione pelo menos uma tutoria.'); return; }
+  const c = campos();
+  try{
+    await Promise.all(ids.map(id=>axios.post(`/api/gestao/tutorias/${id}/carimbo`, c, {headers:{'Content-Type':'application/json'}})));
+    toast(true,'Carimbo aplicado nas selecionadas.');
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao aplicar nas selecionadas.'); }
+}
+async function aplicarUm(id){
+  const c = campos();
+  try{
+    await axios.post(`/api/gestao/tutorias/${id}/carimbo`, c, {headers:{'Content-Type':'application/json'}});
+    toast(true,'Carimbado!');
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao carimbar.'); }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script>
+async function gerarPdfDoElemento(elementId, filename){
+  const el = document.getElementById(elementId);
+  if(!el){ alert('Elemento não encontrado para PDF.'); return; }
+  const canvas = await html2canvas(el, {scale:2, useCORS:true});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pageWidth = 210;
+  const imgWidth = pageWidth - 20;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+  pdf.save(filename || 'tutoria.pdf');
+}
 carregar();
 </script>
 {% endblock %}

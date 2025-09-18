@@ -11,7 +11,7 @@
   --elev:0 14px 36px rgba(0,0,0,.55);
 
   --text-strong:#e8eef8;
-  --text-soft:#a7b8d7;
+  --text-soft:#ce1010;
   --line:#1b2e56;
 
   --primary:#1558c9;      /* azul fechado */
@@ -104,7 +104,6 @@ select option{
 .form-check-input:focus{box-shadow:0 0 0 .18rem rgba(31,122,230,.35)!important;}
 .form-check-input:checked{background-color:var(--primary)!important;border-color:var(--primary)!important;}
 .form-check-label{color:var(--text-strong)}
-/* melhora contraste quando disabled (ex. na visualização do PDF html) */
 .form-check-input[disabled]{opacity:.7;border-color:rgba(255,255,255,.35)!important}
 
 /* ---------- Botões ---------- */
@@ -169,7 +168,6 @@ a:hover{color:#cfe4ff;}
   color:#000!important;background:#fff!important;border:1px solid #aaa!important;box-shadow:none!important;
 }
 .printable *{color:#000!important;}
-/* checkbox pretinho no PDF html */
 .printable input[type="checkbox"]{accent-color:#000;}
 
 /* ---------- Canvas de assinatura ---------- */
