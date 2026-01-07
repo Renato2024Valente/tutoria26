@@ -30,6 +30,20 @@
   </div>
 </div>
 
+
+<div class="card mb-3 border-danger">
+  <div class="card-body">
+    <h3 class="h6 text-danger mb-1">Manutenção / Limpeza de tutorias</h3>
+    <div class="small text-muted mb-2">Use com cuidado: estes botões apagam registros do banco para liberar armazenamento.</div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-secondary btn-sm" onclick="selecionarTudo(true)">Selecionar todas</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="selecionarTudo(false)">Desmarcar</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="apagarSelecionadas()">Apagar selecionadas</button>
+      <button class="btn btn-danger btn-sm" onclick="apagarTodas()">Apagar TODAS</button>
+    </div>
+  </div>
+</div>
+
 <div id="board"></div>
 {% endblock %}
 
@@ -59,6 +73,16 @@ function campos(){
   };
 }
 function chk(id){ return `<input class="form-check-input sel" type="checkbox" data-id="${id}">`; }
+
+function selecionarTudo(on){
+  document.querySelectorAll('.sel').forEach(c=>{ c.checked = !!on; });
+}
+
+function pedirSenhaExclusao(){
+  const s = prompt('Digite a senha para APAGAR tutorias:');
+  if(!s) return null;
+  return s.trim();
+}
 
 async function carregar(){
   const nowQ = { params: { t: Date.now() } };
@@ -96,7 +120,8 @@ async function carregar(){
                   ${chk(t.id)}
                   <button class="btn btn-sm btn-outline-primary" onclick="aplicarUm(${t.id})">Carimbar só esta</button>
                   <button class="btn btn-sm btn-outline-success" onclick="gerarPdfDoElemento('gst-print-${t.id}', 'tutoria-${t.id}.pdf')">PDF</button>
-                </div>
+                <button class=\"btn btn-sm btn-outline-danger\" onclick=\"apagarUm(${t.id})\">Apagar</button>
+</div>
               </div>
               <div class="printable p-3 mt-2" id="gst-print-${t.id}">
                 <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
@@ -175,6 +200,48 @@ async function aplicarUm(id){
     await carregar();
   }catch(e){ console.error(e); toast(false,'Erro ao carimbar.'); }
 }
+
+async function apagarUm(id){
+  if(!confirm('Apagar a tutoria #' + id + '?')) return;
+  const senha = pedirSenhaExclusao();
+  if(!senha) return;
+  try{
+    await axios.delete(`/api/gestao/tutorias/${id}`, { data: { senha }, headers:{'Content-Type':'application/json'} });
+    toast(true,'Tutoria apagada.');
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao apagar.'); }
+}
+
+async function apagarSelecionadas(){
+  const ids = selecionados();
+  if(!ids.length){ toast(false,'Selecione pelo menos uma tutoria.'); return; }
+  const frase = prompt('Para apagar as selecionadas, digite: APAGAR_SELECIONADAS');
+  if(frase !== 'APAGAR_SELECIONADAS') return;
+  const senha = pedirSenhaExclusao();
+  if(!senha) return;
+  try{
+    const r = await axios.post('/api/gestao/tutorias/excluir', {ids, senha}, {headers:{'Content-Type':'application/json'}});
+    toast(true, `Apagadas: ${r.data?.apagadas ?? 0}`);
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao apagar selecionadas.'); }
+}
+
+async function apagarTodas(){
+  const frase = prompt('ATENÇÃO! Para apagar TODAS as tutorias, digite exatamente: APAGAR_TODAS');
+  if(frase !== 'APAGAR_TODAS') return;
+  if(!confirm('Tem certeza absoluta? Isso remove TODOS os registros do banco.')) return;
+  const senha = pedirSenhaExclusao();
+  if(!senha) return;
+  try{
+    const r = await axios.delete('/api/gestao/tutorias', { data: { confirm:'APAGAR_TODAS', senha }, headers:{'Content-Type':'application/json'} });
+    toast(true, `Banco limpo. Apagadas: ${r.data?.apagadas ?? 0}`);
+    await new Promise(r=>setTimeout(r,150));
+    await carregar();
+  }catch(e){ console.error(e); toast(false,'Erro ao apagar todas.'); }
+}
+
 </script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>

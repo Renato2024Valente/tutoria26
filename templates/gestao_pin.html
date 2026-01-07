@@ -1,6 +1,6 @@
 
 {% extends 'base.html' %}
-{% block title %}Gestão — PIN{% endblock %}
+{% block title %}Gestão — Senha{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-6 col-lg-4">
@@ -9,8 +9,8 @@
         <h2 class="h5">Acesso Gestão</h2>
         {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
         <form method="post" action="/gestao">
-          <label class="form-label">PIN</label>
-          <input class="form-control mb-3" type="password" name="pin" placeholder="password" required>
+          <label class="form-label">Senha</label>
+          <input class="form-control mb-3" type="password" name="pin" placeholder="Digite a senha" required>
           <div class="d-flex gap-2">
             <button class="btn btn-warning">Entrar</button>
             <a class="btn btn-secondary" href="/form">Voltar</a>

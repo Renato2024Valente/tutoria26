@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy import create_engine, Integer, String, DateTime, Text, ForeignKey, inspect, text as sqltext
 from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship, sessionmaker, scoped_session
-import os, json
+import os, json, re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -53,9 +53,34 @@ class Tutoria(Base):
 
     professor = relationship('User', back_populates='tutorias')
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///local.db')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://tutoria2026_0y91_user:O9JNf7QjcPjhUXWFNgfppbWAXx5I52SX@dpg-d5cg4jmuk2gs7380ql2g-a.oregon-postgres.render.com/tutoria2026_0y91')
+# IMPORTANT:
+# - If DATABASE_URL comes as "postgresql://...", SQLAlchemy defaults to psycopg2.
+# - This project uses psycopg3 (psycopg[binary]), so we normalize to the psycopg driver.
+if DATABASE_URL.startswith('postgresql://'):
+    DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
+
+# Render EXTERNAL DB usually requires sslmode=require when accessed from outside Render
+if 'render.com' in DATABASE_URL and 'sslmode=' not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL + ('&' if '?' in DATABASE_URL else '?') + 'sslmode=require'
+
+# Log (sem expor senha)
+try:
+    safe = re.sub(r"//([^:]+):([^@]+)@", r"//\1:***@", DATABASE_URL)
+    print('[DB]', safe)
+except Exception:
+    pass
+
+
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key')
-GESTAO_PIN = os.getenv('GESTAO_PIN', 'adm123')
+
+# PIN para entrar no painel da gestão
+GESTAO_PIN = os.getenv('GESTAO_PIN', 'admin1243')
+
+# Senha obrigatória para APAGAR tutorias (individual / selecionadas / todas)
+GESTAO_DELETE_PASS = os.getenv('GESTAO_DELETE_PASS', '1243##')
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
 Base.metadata.create_all(engine)
@@ -220,6 +245,36 @@ def require_gestao():
     if not session.get('gestao_mode'):
         abort(403)
 
+def require_delete_pass(data: dict):
+    """Senha obrigatória para ações destrutivas no painel da gestão."""
+    senha = (data.get('senha') or '').strip()
+    if senha != GESTAO_DELETE_PASS:
+        return jsonify({'ok': False, 'error': 'Senha de exclusão inválida.'}), 401
+    return None
+
+@app.get('/api/gestao/dbinfo')
+def api_g_dbinfo():
+    require_gestao()
+    info = {}
+    try:
+        info['database_url'] = engine.url.render_as_string(hide_password=True)
+        info['dialect'] = engine.url.get_backend_name()
+    except Exception:
+        info['database_url'] = 'unknown'
+        info['dialect'] = 'unknown'
+    try:
+        insp = inspect(engine)
+        info['tables'] = insp.get_table_names()
+    except Exception:
+        info['tables'] = []
+    try:
+        db = SessionLocal()
+        info['count_tutorias'] = db.query(Tutoria).count()
+        db.close()
+    except Exception:
+        info['count_tutorias'] = None
+    return jsonify({'ok': True, **info})
+
 @app.get('/api/gestao/professores')
 def api_g_professores():
     require_gestao()
@@ -295,6 +350,56 @@ def api_g_carimbo_one(tid):
     t.carimbo_obs = (data.get('obs') or '').strip()
     db.commit(); db.close()
     return jsonify({'ok': True})
+
+
+
+# ---------- Gestão: manutenção (excluir tutorias) ----------
+@app.delete('/api/gestao/tutorias/<int:tid>')
+def api_g_delete_one(tid):
+    require_gestao()
+    data = request.get_json(silent=True) or {}
+    bad = require_delete_pass(data)
+    if bad: return bad
+    db = SessionLocal()
+    t = db.get(Tutoria, tid)
+    if not t:
+        db.close(); abort(404)
+    db.delete(t)
+    db.commit(); db.close()
+    return jsonify({'ok': True})
+
+@app.post('/api/gestao/tutorias/excluir')
+def api_g_delete_many():
+    require_gestao()
+    data = request.json or {}
+    bad = require_delete_pass(data)
+    if bad: return bad
+    ids = data.get('ids') or []
+    # validação básica
+    ids = [int(x) for x in ids if str(x).isdigit()]
+    if not ids:
+        return jsonify({'ok': False, 'error': 'Lista de ids vazia.'}), 400
+    db = SessionLocal()
+    q = db.query(Tutoria).filter(Tutoria.id.in_(ids))
+    n = q.count()
+    q.delete(synchronize_session=False)
+    db.commit(); db.close()
+    return jsonify({'ok': True, 'apagadas': n})
+
+@app.delete('/api/gestao/tutorias')
+def api_g_delete_all():
+    require_gestao()
+    data = request.json or {}
+    bad = require_delete_pass(data)
+    if bad: return bad
+    confirm = (data.get('confirm') or '').strip()
+    if confirm != 'APAGAR_TODAS':
+        return jsonify({'ok': False, 'error': 'Confirmação inválida. Envie {"confirm":"APAGAR_TODAS"}.'}), 400
+    db = SessionLocal()
+    n = db.query(Tutoria).count()
+    db.query(Tutoria).delete(synchronize_session=False)
+    db.commit(); db.close()
+    return jsonify({'ok': True, 'apagadas': n})
 
 # ---------- CRUD (professor) ----------
 @app.post('/api/tutorias')
