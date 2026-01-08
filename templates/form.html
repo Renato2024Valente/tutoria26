@@ -281,8 +281,11 @@
     e.preventDefault();
   }
   function endDraw(e){
+    // IMPORTANTE (mobile): não bloquear toques fora do canvas.
+    // Se prevenirmos o default em todo touchend da janela, os links/inputs param de funcionar.
+    if(!drawing) return;
     drawing = false;
-    e.preventDefault();
+    if(e && e.cancelable) e.preventDefault();
   }
 
   canvas.addEventListener('mousedown', startDraw);
