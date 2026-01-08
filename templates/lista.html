@@ -1,82 +1,261 @@
-
 {% extends 'base.html' %}
-{% block title %}Minhas tutorias{% endblock %}
+{% set title = 'Tutorias - Tutoria 2026' %}
 {% block content %}
-<h2 class="h5 mb-3">Minhas tutorias</h2>
-<div class="row g-3">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">Tutorias salvas</h4>
+    <div class="soft">Você pode ver em <b>Lista</b> ou em <b>Impressa</b> (formulário).</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <div class="toggle-pill">
+      <span class="soft small">Visualização:</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="btnLista">Lista</button>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="btnImpressa">Impressa</button>
+    </div>
+    <a href="{{ url_for('form') }}" class="btn btn-primary">+ Nova tutoria</a>
+  </div>
+</div>
+
+<div id="viewLista" class="card app-card">
+  <div class="card-body p-3 p-md-4">
+    {% if not tutorias %}
+      <div class="soft">Nenhuma tutoria salva ainda.</div>
+    {% else %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Data</th>
+              <th>Aluno</th>
+              <th>Série</th>
+              <th>Tutor</th>
+              <th style="width:250px">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tutorias %}
+            <tr>
+              <td class="fw-semibold">{{ t.id }}</td>
+              <td class="soft">{{ t.criado_em|dtbr }}</td>
+              <td>{{ t.nome_aluno }}</td>
+              <td><span class="badge text-bg-secondary">{{ t.serie }}</span></td>
+              <td>{{ t.nome_tutor or '' }}</td>
+              <td>
+                <div class="d-flex flex-wrap gap-2">
+                  <button class="btn btn-outline-primary btn-sm" data-view="{{ t.id }}">Ver</button>
+                  <a class="btn btn-outline-success btn-sm" href="{{ url_for('tutoria_pdf', tid=t.id) }}" target="_blank">PDF</a>
+                  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('form') }}?id={{ t.id }}">Editar</a>
+                  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('form') }}?id={{ t.id }}&duplicar=1">Duplicar</a>
+                  <button class="btn btn-outline-danger btn-sm" data-del="{{ t.id }}">Excluir</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div id="viewImpressa" class="vstack gap-3" style="display:none;">
+  {% if not tutorias %}
+    <div class="card app-card"><div class="card-body p-4 soft">Nenhuma tutoria salva ainda.</div></div>
+  {% endif %}
+
   {% for t in tutorias %}
-  <div class="col-12">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-          <div>
-            <div class="fw-bold">{{t.nome_aluno}} <span class="badge text-bg-primary">{{t.serie}}</span></div>
-            <div class="small text-muted">{{ t.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
-            <div class="small text-secondary">Tutor: <b>{{t.nome_tutor or '—'}}</b></div>
+  <div class="sheet" data-sheet="{{ t.id }}">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h5 class="fw-bold mb-0">Tutoria</h5>
+        <div class="soft small">ID <span class="mono">#{{ t.id }}</span> • {{ t.criado_em|dtbr }}</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-success btn-sm" href="{{ url_for('tutoria_pdf', tid=t.id) }}" target="_blank">PDF</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('form') }}?id={{ t.id }}">Editar</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('form') }}?id={{ t.id }}&duplicar=1">Duplicar</a>
+        <button class="btn btn-outline-danger btn-sm" data-del="{{ t.id }}">Excluir</button>
+      </div>
+    </div>
+
+    <div class="line"></div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div class="label">Tutor</div>
+        <div class="value">{{ t.nome_tutor or '' }}</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="label">Série/Turma</div>
+        <div class="value">{{ t.serie }}</div>
+      </div>
+      <div class="col-12 col-md-8">
+        <div class="label">Aluno</div>
+        <div class="value">{{ t.nome_aluno }}</div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="label">Telefone aluno</div>
+        <div class="value">{{ t.tel_aluno or '' }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="label">Contatos extras</div>
+        {% set contatos_list = (t.contatos_extra|fromjson) %}
+        {% if contatos_list and contatos_list|length > 0 %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>Nome</th><th>Telefone</th></tr></thead>
+              <tbody>
+                {% for c in contatos_list %}
+                <tr>
+                  <td>{{ c.get('nome','') }}</td>
+                  <td class="mono">{{ c.get('telefone','') }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          <div class="d-flex gap-2">
-            <a class="btn btn-outline-primary btn-sm" href="/form?id={{t.id}}">Editar</a>
-            <a class="btn btn-outline-secondary btn-sm" href="/form?id={{t.id}}&duplicar=1">Duplicar</a>
-            <button class="btn btn-outline-success btn-sm" onclick="gerarPDF({{t.id}})">PDF</button>
-            <button class="btn btn-outline-danger btn-sm" onclick="delTutoria({{t.id}})">Excluir</button>
-          </div>
+        {% else %}
+          <div class="soft">Nenhum.</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12">
+        <div class="label">Projeto de Vida</div>
+        <div class="value">{{ t.projeto_vida or '' }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="label">Descrições / Observações</div>
+        <div class="value">{{ t.descricoes or '' }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="label">Ocorrências</div>
+        <div>
+          {% if t.ocorrencias %}
+            {% for o in (t.ocorrencias.split(',') if t.ocorrencias else []) %}
+              {% if o %}<span class="chip">{{ o }}</span>{% endif %}
+            {% endfor %}
+          {% else %}
+            <span class="soft">Nenhuma marcada.</span>
+          {% endif %}
         </div>
-        <hr>
-        <div id="print-{{t.id}}" class="printable">
-          <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
-          <div class="row small">
-            <div class="col-6"><b>Tutor:</b> {{t.nome_tutor or '-'}}</div>
-            <div class="col-6"><b>Aluno:</b> {{t.nome_aluno}}</div>
-            <div class="col-3"><b>Série:</b> {{t.serie}}</div>
-            <div class="col-3"><b>Data/Hora:</b> {{ t.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
-            <div class="col-6"><b>Telefone aluno:</b> {{t.tel_aluno or '-'}}</div>
-            <div class="col-12 mt-2"><b>Projeto de Vida:</b><br>{{t.projeto_vida or '-'}}</div>
-            <div class="col-12 mt-2"><b>Descrições (problemas e orientações):</b><br>{{t.descricoes or '-'}}</div>
-            <div class="col-12 mt-2"><b>Ocorrências:</b> {{ (t.ocorrencias or '-').replace(',', ', ') }}</div>
-            <div class="col-12 mt-2"><b>Assinatura do aluno:</b><br>
-              {% if t.assinatura %}<img src="{{t.assinatura}}" style="max-width:280px;border:1px solid #000;">{% else %}-{% endif %}
-            </div>
-            <div class="col-12 mt-3">
-              <div class="p-3 rounded-2" style="border:2px dashed #1976d2; background:#f4f8ff;">
-                <div class="fw-bold" style="color:#1976d2;">{{ t.carimbo_texto or 'ÊXITO VISTADO' }}</div>
-                <div class="small"><b>Responsável:</b> {{ t.carimbo_resp or '—' }}</div>
-                <div class="small"><b>Instituição:</b> {{ t.carimbo_inst or '—' }}</div>
-                <div class="small"><b>Contato:</b> {{ t.carimbo_contato or '—' }}</div>
-                <div class="small"><b>Observações:</b> {{ t.carimbo_obs or '—' }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="label">Assinatura</div>
+        {% if t.assinatura %}
+          <img src="{{ t.assinatura }}" alt="assinatura" style="max-width:520px; width:100%; border:1px solid #e6e9f0; border-radius:12px;" />
+        {% else %}
+          <div class="soft">Sem assinatura.</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12">
+        <div class="label">Carimbo</div>
+        {% if t.carimbo_inst or t.carimbo_resp or t.carimbo_contato or t.carimbo_texto or t.carimbo_obs %}
+          <div class="printable-mini p-3 rounded-3 mt-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+              <div>
+                <div class="label">Carimbo</div>
+                <div class="value fw-bold azul">{{ t.carimbo_texto or 'ÊXITO VISTADO' }}</div>
+                {% if t.carimbo_inst %}<div class="soft small">{{ t.carimbo_inst }}</div>{% endif %}
+                {% if t.carimbo_contato %}<div class="soft small">{{ t.carimbo_contato }}</div>{% endif %}
+              </div>
+              <div class="text-end">
+                <div class="soft small">Responsável</div>
+                <div class="value">{{ t.carimbo_resp or '' }}</div>
               </div>
             </div>
+            {% if t.carimbo_obs %}<div class="soft small mt-2">{{ t.carimbo_obs }}</div>{% endif %}
           </div>
-        </div>
+        {% else %}
+          <div class="soft">Sem carimbo.</div>
+        {% endif %}
       </div>
     </div>
   </div>
-  {% else %}
-  <div class="col-12"><div class="alert alert-info">Você ainda não tem tutorias. Crie em <a href="/form">Nova Tutoria</a>.</div></div>
   {% endfor %}
 </div>
+
+<!-- Modal Ver (impressa) -->
+<div class="modal fade" id="modalVer" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tutoria (modo impresso)</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modalBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+{% block extra_js %}
 <script>
-async function delTutoria(id){
-  if(!confirm('Excluir definitivamente esta tutoria?')) return;
-  try{ await axios.delete(`/api/tutorias/${id}`); location.reload(); }catch(e){ alert('Erro ao excluir.'); }
-}
-async function gerarPdfDoElemento(elementId, filename){
-  const el = document.getElementById(elementId);
-  if(!el){ alert('Elemento não encontrado para PDF.'); return; }
-  const canvas = await html2canvas(el, {scale:2, useCORS:true});
-  const imgData = canvas.toDataURL('image/png');
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p','mm','a4');
-  const pageWidth = 210;
-  const imgWidth = pageWidth - 20;
-  const imgHeight = canvas.height * imgWidth / canvas.width;
-  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-  pdf.save(filename || 'tutoria.pdf');
-}
-function gerarPDF(id){ gerarPdfDoElemento(`print-${id}`, `tutoria-${id}.pdf`); }
+  // Toggle de visualização (salva preferência)
+  const viewLista = document.getElementById('viewLista');
+  const viewImpressa = document.getElementById('viewImpressa');
+  const btnLista = document.getElementById('btnLista');
+  const btnImpressa = document.getElementById('btnImpressa');
+
+  function setMode(mode){
+    localStorage.setItem('tutoria_view_mode', mode);
+    if(mode==='impressa'){
+      viewLista.style.display = 'none';
+      viewImpressa.style.display = '';
+      btnImpressa.classList.add('btn-primary');
+      btnImpressa.classList.remove('btn-outline-primary');
+      btnLista.classList.add('btn-outline-primary');
+      btnLista.classList.remove('btn-primary');
+    } else {
+      viewLista.style.display = '';
+      viewImpressa.style.display = 'none';
+      btnLista.classList.add('btn-primary');
+      btnLista.classList.remove('btn-outline-primary');
+      btnImpressa.classList.add('btn-outline-primary');
+      btnImpressa.classList.remove('btn-primary');
+    }
+  }
+
+  btnLista.addEventListener('click', ()=>setMode('lista'));
+  btnImpressa.addEventListener('click', ()=>setMode('impressa'));
+  setMode(localStorage.getItem('tutoria_view_mode') || 'lista');
+
+  // Modal Ver (copia o bloco impresso)
+  const modal = new bootstrap.Modal(document.getElementById('modalVer'));
+  document.addEventListener('click', (e)=>{
+    const b = e.target.closest('button[data-view]');
+    if(!b) return;
+    const id = b.getAttribute('data-view');
+    const sheet = document.querySelector(`[data-sheet="${id}"]`);
+    if(!sheet) return;
+    document.getElementById('modalBody').innerHTML = sheet.outerHTML;
+    modal.show();
+  });
+
+  // Excluir (usa API) - não pede senha aqui (porque é do próprio professor)
+  async function apiDelete(id){
+    const r = await fetch(`/api/tutorias/${id}`, {method:'DELETE'});
+    if(!r.ok){
+      let msg = 'Erro ao excluir';
+      try{ const j = await r.json(); msg = j.error || msg; }catch{}
+      alert(msg);
+      return;
+    }
+    location.reload();
+  }
+  document.addEventListener('click', (e)=>{
+    const b = e.target.closest('button[data-del]');
+    if(!b) return;
+    const id = b.getAttribute('data-del');
+    if(confirm(`Excluir a tutoria #${id}?`)) apiDelete(id);
+  });
 </script>
 {% endblock %}

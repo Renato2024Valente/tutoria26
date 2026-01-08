@@ -1,264 +1,549 @@
-
 {% extends 'base.html' %}
-{% block title %}Gestão — Tutorias (geral){% endblock %}
+{% set title = 'Gestão - Painel' %}
 {% block content %}
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-  <h2 class="h5 mb-0">Painel da Gestão — visão geral</h2>
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-primary btn-sm" onclick="carregar()">Atualizar</button>
-    <form method="post" action="/gestao/bloquear" class="d-inline">
-      <button class="btn btn-outline-danger btn-sm">Bloquear Gestão</button>
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">Painel da Gestão</h4>
+    <div class="soft">Visualize todas as tutorias em <b>Lista</b> ou <b>Impressa</b>. Exclusões exigem senha <span class="mono">1243##</span>.</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <div class="toggle-pill">
+      <span class="soft small">Visualização:</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="gBtnLista">Lista</button>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="gBtnImpressa">Impressa</button>
+    </div>
+    <form method="post" action="{{ url_for('gestao_bloquear') }}">
+      <button class="btn btn-outline-secondary">Bloquear</button>
     </form>
   </div>
 </div>
 
-<div class="card mb-3">
-  <div class="card-body">
-    <h3 class="h6">Carimbo Digital</h3>
-    <div class="row g-2">
-      <div class="col-md-3"><input class="form-control" id="c_resp" placeholder="Responsável"></div>
-      <div class="col-md-3"><input class="form-control" id="c_inst" placeholder="Instituição"></div>
-      <div class="col-md-3"><input class="form-control" id="c_contato" placeholder="Contato (opcional)"></div>
-      <div class="col-md-3"><input class="form-control" id="c_texto" value="ÊXITO VISTADO"></div>
-      <div class="col-12"><input class="form-control" id="c_obs" placeholder="Observações (opcional)"></div>
-      <div class="col-12 d-flex flex-wrap gap-2 mt-2">
-        <button class="btn btn-success btn-sm" onclick="aplicarTodas()">Aplicar em todas</button>
-        <button class="btn btn-outline-success btn-sm" onclick="aplicarSelecionadas()">Aplicar nas selecionadas</button>
+<div class="card app-card mb-3">
+  <div class="card-body p-3 p-md-4">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <label class="form-label">Buscar</label>
+        <input id="q" class="form-control" placeholder="Aluno, série, tutor, professor...">
       </div>
-      <div id="msg" class="mt-2"></div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Professor</label>
+        <select id="prof" class="form-select">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4 d-flex gap-2">
+        <button id="btnFiltrar" class="btn btn-primary w-100" type="button">Filtrar</button>
+        <button id="btnLimpar" class="btn btn-outline-secondary w-100" type="button">Limpar</button>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button id="btnSelAll" class="btn btn-outline-primary btn-sm" type="button">Selecionar todas</button>
+      <button id="btnSelNone" class="btn btn-outline-primary btn-sm" type="button">Desmarcar</button>
+      <button id="btnDelSel" class="btn btn-outline-danger btn-sm" type="button">Apagar selecionadas</button>
+      <button id="btnDelAll" class="btn btn-danger btn-sm" type="button">Apagar TODAS</button>
+      <span class="soft small align-self-center" id="info"></span>
     </div>
   </div>
 </div>
 
+<!-- CARIMBO DIGITAL (aparece no modo IMPRESSO) -->
+<div class="card app-card mb-3">
+  <div class="card-body p-3 p-md-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+      <div>
+        <h6 class="fw-bold mb-0">Carimbo digital</h6>
+        <div class="soft small">Define o carimbo que aparece no modo <b>Impressa</b>. Você pode aplicar em todas as tutorias ou apenas nas selecionadas.</div>
+      </div>
+      <button id="btnDbInfo" class="btn btn-outline-secondary btn-sm" type="button">Diagnóstico DB</button>
+    </div>
 
-<div class="card mb-3 border-danger">
-  <div class="card-body">
-    <h3 class="h6 text-danger mb-1">Manutenção / Limpeza de tutorias</h3>
-    <div class="small text-muted mb-2">Use com cuidado: estes botões apagam registros do banco para liberar armazenamento.</div>
-    <div class="d-flex flex-wrap gap-2">
-      <button class="btn btn-outline-secondary btn-sm" onclick="selecionarTudo(true)">Selecionar todas</button>
-      <button class="btn btn-outline-secondary btn-sm" onclick="selecionarTudo(false)">Desmarcar</button>
-      <button class="btn btn-outline-danger btn-sm" onclick="apagarSelecionadas()">Apagar selecionadas</button>
-      <button class="btn btn-danger btn-sm" onclick="apagarTodas()">Apagar TODAS</button>
+    <div class="row g-2">
+    <div class="col-12 col-md-4">
+        <label class="form-label">Responsável</label>
+        <input id="car_resp" class="form-control" placeholder="Ex.:Gestor Resposavel">
+      </div>
+      <div class="col-12 col-md-8">
+        <label class="form-label">Instituição</label>
+        <input id="car_inst" class="form-control" placeholder="Ex.: Nome da Escola">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label">Contato</label>
+        <input id="car_contato" class="form-control" placeholder="Ex.: Telefone / e-mail / Data  (Opcional) ">
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label">Texto do carimbo</label>
+        <input id="car_texto" class="form-control" value="ÊXITO VISTADO">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Observações (opcional)</label>
+        <textarea id="car_obs" class="form-control" rows="2" placeholder="Ex.: Validado pela gestão / Data / etc"></textarea>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button id="btnCarimboAll" class="btn btn-primary btn-sm" type="button">Aplicar em TODAS</button>
+      <button id="btnCarimboSel" class="btn btn-outline-primary btn-sm" type="button">Aplicar nas SELECIONADAS</button>
+      <span class="soft small align-self-center">(As mudanças aparecem imediatamente no modo Impressa.)</span>
     </div>
   </div>
 </div>
 
-<div id="board"></div>
+<div id="gViewLista" class="card app-card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width:42px"><input type="checkbox" id="chkMaster"></th>
+            <th>ID</th>
+            <th>Data</th>
+            <th>Professor</th>
+            <th>Aluno</th>
+            <th>Série</th>
+            <th>Tutor</th>
+            <th style="width:200px">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="gViewImpressa" class="vstack gap-3" style="display:none;"></div>
+
+<!-- Modal Ver (impressa) -->
+<div class="modal fade" id="gModalVer" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tutoria (modo impresso)</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="gModalBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-function toast(ok, txt){
-  const el = document.getElementById('msg');
-  el.innerHTML = `<div class="alert ${ok?'alert-success':'alert-danger'} py-2 mb-0">${txt}</div>`;
-  setTimeout(()=>{ el.innerHTML=''; }, 2500);
-}
-function fmtData(iso){
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
-}
-function diaKey(iso){
-  const d = new Date(iso);
-  const y = d.getFullYear(), m = (d.getMonth()+1+'').padStart(2,'0'), dd=(''+d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${dd}`;
-}
-function campos(){
-  return {
-    resp: document.getElementById('c_resp').value.trim(),
-    inst: document.getElementById('c_inst').value.trim(),
-    contato: document.getElementById('c_contato').value.trim(),
-    texto: document.getElementById('c_texto').value.trim() || 'ÊXITO VISTADO',
-    obs: document.getElementById('c_obs').value.trim(),
-  };
-}
-function chk(id){ return `<input class="form-check-input sel" type="checkbox" data-id="${id}">`; }
+  const tbody = document.getElementById('tbody');
+  const gViewLista = document.getElementById('gViewLista');
+  const gViewImpressa = document.getElementById('gViewImpressa');
+  const gBtnLista = document.getElementById('gBtnLista');
+  const gBtnImpressa = document.getElementById('gBtnImpressa');
+  const info = document.getElementById('info');
+  const modal = new bootstrap.Modal(document.getElementById('gModalVer'));
 
-function selecionarTudo(on){
-  document.querySelectorAll('.sel').forEach(c=>{ c.checked = !!on; });
-}
+  let allItems = [];
+  let filtered = [];
+  let profMap = new Map();
 
-function pedirSenhaExclusao(){
-  const s = prompt('Digite a senha para APAGAR tutorias:');
-  if(!s) return null;
-  return s.trim();
-}
+  // ---- Carimbo (Gestão) ----
+  const carResp = document.getElementById('car_resp');
+  const carInst = document.getElementById('car_inst');
+  const carContato = document.getElementById('car_contato');
+  const carTexto = document.getElementById('car_texto');
+  const carObs = document.getElementById('car_obs');
 
-async function carregar(){
-  const nowQ = { params: { t: Date.now() } };
-  const [profR, itemsR] = await Promise.all([axios.get('/api/gestao/professores', nowQ), axios.get('/api/gestao/tutorias', nowQ)]);
-  const profs = {}; (profR.data||[]).forEach(p=>profs[p.id]=p.username);
-  const items = itemsR.data || [];
-  const byDay = {};
-  items.forEach(t=>{
-    const k = diaKey(t.criado_em);
-    byDay[k] = byDay[k] || {};
-    const prof = profs[t.professor_id] || ('#'+t.professor_id);
-    byDay[k][prof] = byDay[k][prof] || [];
-    byDay[k][prof].push(t);
-  });
-  const days = Object.keys(byDay).sort().reverse();
-  const board = document.getElementById('board');
-  board.innerHTML = days.map(day => {
-    const groups = byDay[day];
-    const diaLabel = fmtData(day+'T00:00:00Z');
-    const profNames = Object.keys(groups).sort((a,b)=>a.localeCompare(b));
-    const sections = profNames.map(name=>{
-      const arr = groups[name].sort((a,b)=> new Date(b.criado_em) - new Date(a.criado_em));
-      const cards = arr.map(t=>`
-        <div class="col-12 col-md-6">
-          <div class="card shadow-sm mb-2">
-            <div class="card-body p-3">
-              <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                <div>
-                  <div class="fw-bold">${t.nome_aluno} <span class="badge text-bg-primary">${t.serie}</span></div>
-                  <div class="small text-muted">${new Date(t.criado_em).toLocaleString('pt-BR')}</div>
-                  <div class="small text-secondary">Professor: <b>${name}</b></div>
-                  <div class="small text-secondary">Tutor: <b>${t.nome_tutor || '—'}</b></div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                  ${chk(t.id)}
-                  <button class="btn btn-sm btn-outline-primary" onclick="aplicarUm(${t.id})">Carimbar só esta</button>
-                  <button class="btn btn-sm btn-outline-success" onclick="gerarPdfDoElemento('gst-print-${t.id}', 'tutoria-${t.id}.pdf')">PDF</button>
-                <button class=\"btn btn-sm btn-outline-danger\" onclick=\"apagarUm(${t.id})\">Apagar</button>
-</div>
-              </div>
-              <div class="printable p-3 mt-2" id="gst-print-${t.id}">
-                <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
-                <div class="row small">
-                  <div class="col-6"><b>Tutor:</b> ${t.nome_tutor || '—'}</div>
-                  <div class="col-6"><b>Aluno:</b> ${t.nome_aluno}</div>
-                  <div class="col-3"><b>Série:</b> ${t.serie}</div>
-                  <div class="col-3"><b>Data/Hora:</b> ${new Date(t.criado_em).toLocaleString('pt-BR')}</div>
-                  <div class="col-6"><b>Telefone aluno:</b> ${t.tel_aluno || '—'}</div>
-                  <div class="col-12 mt-2"><b>Projeto de Vida:</b><br>${t.projeto_vida || '-'}</div>
-                  <div class="col-12 mt-2"><b>Descrições (problemas e orientações):</b><br>${t.descricoes || '-'}</div>
-                  <div class="col-12 mt-2"><b>Ocorrências:</b> ${(t.ocorrencias||[]).join(', ') || '-'}</div>
-                  <div class="col-12 mt-2"><b>Assinatura do aluno:</b><br>${t.assinatura ? `<img src="${t.assinatura}" style="max-width:280px;border:1px solid #000;">` : '-'}</div>
-                  <div class="col-12 mt-3">
-                    <div class="p-3 rounded-2" style="border:2px dashed #1976d2; background:#f4f8ff;">
-                      <div class="fw-bold" style="color:#1976d2;">${(t.carimbo && t.carimbo.texto) || 'ÊXITO VISTADO'}</div>
-                      <div class="small"><b>Responsável:</b> ${(t.carimbo && t.carimbo.resp) || '—'}</div>
-                      <div class="small"><b>Instituição:</b> ${(t.carimbo && t.carimbo.inst) || '—'}</div>
-                      <div class="small"><b>Contato:</b> ${(t.carimbo && t.carimbo.contato) || '—'}</div>
-                      <div class="small"><b>Observações:</b> ${(t.carimbo && t.carimbo.obs) || '—'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join('');
-      return `
-        <div class="card mb-3">
-          <div class="card-header bg-white"><b>${name}</b></div>
-          <div class="card-body">
-            <div class="row">${cards}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
+  function readCarimbo(){
+    return {
+      resp: (carResp.value || '').trim(),
+      inst: (carInst.value || '').trim(),
+      contato: (carContato.value || '').trim(),
+      texto: (carTexto.value || 'ÊXITO VISTADO').trim(),
+      obs: (carObs.value || '').trim(),
+    };
+  }
+
+  function fillCarimbo(c){
+    if(!c) return;
+    carResp.value = c.resp || '';
+    carInst.value = c.inst || '';
+    carContato.value = c.contato || '';
+    carTexto.value = c.texto || 'ÊXITO VISTADO';
+    carObs.value = c.obs || '';
+  }
+
+  function carimboHtml(c){
+    if(!c) c = {};
+    const texto = (c.texto || 'ÊXITO VISTADO');
+    const inst = (c.inst || '');
+    const contato = (c.contato || '');
+    const resp = (c.resp || '');
+    const obs = (c.obs || '');
+    const has = (texto || inst || contato || resp || obs).trim().length > 0;
+    if(!has) return `<div class="soft">Sem carimbo.</div>`;
     return `
-      <div class="mb-4">
-        <h3 class="h6 text-uppercase text-secondary mb-2">${diaLabel}</h3>
-        ${sections || '<div class="alert alert-info">Sem registros.</div>'}
+      <div class="printable-mini p-3 rounded-3 mt-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <div class="label">Carimbo</div>
+            <div class="value fw-bold azul">${texto}</div>
+            ${inst ? `<div class="soft small">${inst}</div>` : ``}
+            ${contato ? `<div class="soft small">${contato}</div>` : ``}
+          </div>
+          <div class="text-end">
+            <div class="soft small">Responsável</div>
+            <div class="value">${resp}</div>
+          </div>
+        </div>
+        ${obs ? `<div class="soft small mt-2">${obs}</div>` : ``}
       </div>
     `;
-  }).join('');
-}
+  }
 
-function selecionados(){
-  return Array.from(document.querySelectorAll('.sel:checked')).map(x=>Number(x.getAttribute('data-id')));
-}
-async function aplicarTodas(){
-  const c = campos();
-  try{
-    const r = await axios.post('/api/gestao/carimbo', c, {headers:{'Content-Type':'application/json'}});
-    toast(true, `Carimbo aplicado em ${r.data?.aplicados ?? 0} tutorias.`);
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao aplicar em todas.'); }
-}
-async function aplicarSelecionadas(){
-  const ids = selecionados();
-  if(!ids.length){ toast(false,'Selecione pelo menos uma tutoria.'); return; }
-  const c = campos();
-  try{
-    await Promise.all(ids.map(id=>axios.post(`/api/gestao/tutorias/${id}/carimbo`, c, {headers:{'Content-Type':'application/json'}})));
-    toast(true,'Carimbo aplicado nas selecionadas.');
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao aplicar nas selecionadas.'); }
-}
-async function aplicarUm(id){
-  const c = campos();
-  try{
-    await axios.post(`/api/gestao/tutorias/${id}/carimbo`, c, {headers:{'Content-Type':'application/json'}});
-    toast(true,'Carimbado!');
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao carimbar.'); }
-}
+  function fmtDate(iso){
+    try{ return new Date(iso).toLocaleString('pt-BR'); }catch{ return iso; }
+  }
 
-async function apagarUm(id){
-  if(!confirm('Apagar a tutoria #' + id + '?')) return;
-  const senha = pedirSenhaExclusao();
-  if(!senha) return;
-  try{
-    await axios.delete(`/api/gestao/tutorias/${id}`, { data: { senha }, headers:{'Content-Type':'application/json'} });
-    toast(true,'Tutoria apagada.');
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao apagar.'); }
-}
+  function setMode(mode){
+    localStorage.setItem('tutoria_gestao_view_mode', mode);
+    if(mode==='impressa'){
+      gViewLista.style.display = 'none';
+      gViewImpressa.style.display = '';
+      gBtnImpressa.classList.add('btn-primary');
+      gBtnImpressa.classList.remove('btn-outline-primary');
+      gBtnLista.classList.add('btn-outline-primary');
+      gBtnLista.classList.remove('btn-primary');
+    } else {
+      gViewLista.style.display = '';
+      gViewImpressa.style.display = 'none';
+      gBtnLista.classList.add('btn-primary');
+      gBtnLista.classList.remove('btn-outline-primary');
+      gBtnImpressa.classList.add('btn-outline-primary');
+      gBtnImpressa.classList.remove('btn-primary');
+    }
+  }
+  gBtnLista.addEventListener('click', ()=>setMode('lista'));
+  gBtnImpressa.addEventListener('click', ()=>setMode('impressa'));
 
-async function apagarSelecionadas(){
-  const ids = selecionados();
-  if(!ids.length){ toast(false,'Selecione pelo menos uma tutoria.'); return; }
-  const frase = prompt('Para apagar as selecionadas, digite: APAGAR_SELECIONADAS');
-  if(frase !== 'APAGAR_SELECIONADAS') return;
-  const senha = pedirSenhaExclusao();
-  if(!senha) return;
-  try{
-    const r = await axios.post('/api/gestao/tutorias/excluir', {ids, senha}, {headers:{'Content-Type':'application/json'}});
-    toast(true, `Apagadas: ${r.data?.apagadas ?? 0}`);
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao apagar selecionadas.'); }
-}
+  async function api(url, options={}){
+    const res = await fetch(url, { headers:{'Content-Type':'application/json'}, ...options });
+    const data = await res.json().catch(()=> ({}));
+    if(!res.ok) throw new Error(data.error || 'Erro');
+    return data;
+  }
 
-async function apagarTodas(){
-  const frase = prompt('ATENÇÃO! Para apagar TODAS as tutorias, digite exatamente: APAGAR_TODAS');
-  if(frase !== 'APAGAR_TODAS') return;
-  if(!confirm('Tem certeza absoluta? Isso remove TODOS os registros do banco.')) return;
-  const senha = pedirSenhaExclusao();
-  if(!senha) return;
-  try{
-    const r = await axios.delete('/api/gestao/tutorias', { data: { confirm:'APAGAR_TODAS', senha }, headers:{'Content-Type':'application/json'} });
-    toast(true, `Banco limpo. Apagadas: ${r.data?.apagadas ?? 0}`);
-    await new Promise(r=>setTimeout(r,150));
-    await carregar();
-  }catch(e){ console.error(e); toast(false,'Erro ao apagar todas.'); }
-}
+  function getSelectedIds(){
+    const s = new Set(Array.from(document.querySelectorAll('input[data-id]:checked')).map(x => parseInt(x.dataset.id, 10)));
+    return Array.from(s);
+  }
 
-</script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script>
-async function gerarPdfDoElemento(elementId, filename){
-  const el = document.getElementById(elementId);
-  if(!el){ alert('Elemento não encontrado para PDF.'); return; }
-  const canvas = await html2canvas(el, {scale:2, useCORS:true});
-  const imgData = canvas.toDataURL('image/png');
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p','mm','a4');
-  const pageWidth = 210;
-  const imgWidth = pageWidth - 20;
-  const imgHeight = canvas.height * imgWidth / canvas.width;
-  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-  pdf.save(filename || 'tutoria.pdf');
-}
-carregar();
+  function render(){
+    const pid = (document.getElementById('prof').value || '').trim();
+    const nameOf = (t) => (profMap.get(t.professor_id) || ('#'+t.professor_id));
+
+    // ordenação
+    const items = [...filtered];
+    if(!pid){
+      items.sort((a,b)=>{
+        const pa = nameOf(a).toLowerCase();
+        const pb = nameOf(b).toLowerCase();
+        if(pa < pb) return -1;
+        if(pa > pb) return 1;
+        return (b.criado_em || '').localeCompare(a.criado_em || '');
+      });
+    } else {
+      items.sort((a,b)=> (b.criado_em || '').localeCompare(a.criado_em || ''));
+    }
+
+    // contagem por professor (no filtro atual)
+    const counts = new Map();
+    for(const t of items){
+      const p = nameOf(t);
+      counts.set(p, (counts.get(p)||0) + 1);
+    }
+
+    // ---------- LISTA (tabela) ----------
+    tbody.innerHTML = '';
+    let lastProf = null;
+    for(const t of items){
+      const p = nameOf(t);
+
+      // separador por professor quando estiver em "Todos"
+      if(!pid && p !== lastProf){
+        const trh = document.createElement('tr');
+        trh.className = 'group-row';
+        const td = document.createElement('td');
+        td.colSpan = 8;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'd-flex flex-wrap justify-content-between align-items-center gap-2';
+
+        const left = document.createElement('div');
+        left.innerHTML = `Professor: <span class="fw-bold"></span>`;
+        left.querySelector('span').textContent = p;
+
+        const right = document.createElement('div');
+        right.className = 'soft small';
+        right.textContent = `${counts.get(p)} tutoria(s)`;
+
+        wrap.appendChild(left);
+        wrap.appendChild(right);
+        td.appendChild(wrap);
+        trh.appendChild(td);
+        tbody.appendChild(trh);
+
+        lastProf = p;
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" data-id="${t.id}"></td>
+        <td class="fw-semibold">${t.id}</td>
+        <td class="soft">${fmtDate(t.criado_em)}</td>
+        <td>${p}</td>
+        <td>${t.nome_aluno || ''}</td>
+        <td><span class="badge text-bg-secondary">${t.serie || ''}</span></td>
+        <td>${t.nome_tutor || ''}</td>
+        <td>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary btn-sm" data-view="${t.id}">Ver</button>
+            <a class="btn btn-outline-success btn-sm" href="/tutorias/${t.id}/pdf" target="_blank">PDF</a>
+            <button class="btn btn-outline-danger btn-sm" data-del="${t.id}">Apagar</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // ---------- IMPRESSA ----------
+    gViewImpressa.innerHTML = '';
+    lastProf = null;
+    for(const t of items){
+      const p = nameOf(t);
+
+      // cabeçalho por professor quando estiver em "Todos"
+      if(!pid && p !== lastProf){
+        const h = document.createElement('div');
+        h.className = 'group-title';
+        h.innerHTML = `Professor: <span class="fw-bold"></span> <span class="soft small ms-2"></span>`;
+        h.querySelector('span.fw-bold').textContent = p;
+        h.querySelector('span.soft').textContent = `${counts.get(p)} tutoria(s)`;
+        gViewImpressa.appendChild(h);
+        lastProf = p;
+      }
+
+      const div = document.createElement('div');
+      div.className = 'sheet';
+      div.setAttribute('data-sheet', t.id);
+
+      const contatos = (t.contatos_extra || []).map(c => {
+        const n = (c.nome || '').trim();
+        const tel = (c.telefone || '').trim();
+        if(!n && !tel) return '';
+        return `<tr><td>${n || '-'}</td><td>${tel || '-'}</td></tr>`;
+      }).filter(Boolean).join('') || `<tr><td colspan="2" class="soft">Nenhum</td></tr>`;
+
+      const occ = (t.ocorrencias || []).filter(Boolean).map(o => `<span class="badge text-bg-secondary me-1 mb-1">${o}</span>`).join('') || `<span class="soft">Nenhuma marcada.</span>`;
+      const assinatura = t.assinatura ? `<img src="${t.assinatura}" alt="assinatura" style="max-width:320px;width:100%;border-radius:12px;" />` : `<div class="soft">Sem assinatura.</div>`;
+      const carimbo = carimboHtml(t.carimbo || {});
+
+      div.innerHTML = `
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <h5 class="fw-bold mb-0">Tutoria</h5>
+            <div class="soft small">ID <span class="mono">#${t.id}</span> • ${fmtDate(t.criado_em)} • Professor: ${p}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <label class="btn btn-outline-primary btn-sm mb-0"><input type="checkbox" class="form-check-input me-2" data-id="${t.id}"> Selecionar</label>
+            <a class="btn btn-outline-success btn-sm" href="/tutorias/${t.id}/pdf" target="_blank">PDF</a>
+            <button class="btn btn-outline-danger btn-sm" data-del="${t.id}">Apagar</button>
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6"><div class="label">Nome do Tutor</div><div class="value">${t.nome_tutor || ''}</div></div>
+          <div class="col-12 col-md-6"><div class="label">Telefone do Aluno</div><div class="value">${t.tel_aluno || ''}</div></div>
+
+          <div class="col-12 col-md-8"><div class="label">Nome do Aluno</div><div class="value">${t.nome_aluno || ''}</div></div>
+          <div class="col-12 col-md-4"><div class="label">Série/Turma</div><div class="value">${t.serie || ''}</div></div>
+
+          <div class="col-12">
+            <div class="label">Contatos extras</div>
+            <div class="table-responsive">
+              <table class="table table-sm contacts-table mb-0">
+                <thead><tr><th>Nome</th><th>Telefone</th></tr></thead>
+                <tbody>${contatos}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="col-12"><div class="label">Projeto de Vida</div><div class="value">${(t.projeto_vida || '')}</div></div>
+          <div class="col-12"><div class="label">Descrições</div><div class="value">${(t.descricoes || '')}</div></div>
+          <div class="col-12"><div class="label">Ocorrências</div><div>${occ}</div></div>
+          <div class="col-12"><div class="label">Assinatura</div>${assinatura}</div>
+          <div class="col-12">${carimbo}</div>
+        </div>
+      `;
+      gViewImpressa.appendChild(div);
+    }
+
+    // Info
+    if(!pid && counts.size > 1){
+      const parts = [...counts.entries()].map(([n,c]) => `${n} (${c})`).join(' • ');
+      info.textContent = `Mostrando ${items.length} de ${allItems.length} — ${parts}`;
+    } else {
+      info.textContent = `Mostrando ${items.length} de ${allItems.length}`;
+    }
+  }
+
+  function applyFilter(){
+    const q = (document.getElementById('q').value || '').toLowerCase().trim();
+    const pid = (document.getElementById('prof').value || '').trim();
+    filtered = allItems.filter(t => {
+      if(pid && String(t.professor_id) !== pid) return false;
+      if(!q) return true;
+      const p = (profMap.get(t.professor_id) || '').toLowerCase();
+      const blob = [t.nome_aluno, t.serie, t.nome_tutor, t.tel_aluno, t.projeto_vida, t.descricoes, p].join(' ').toLowerCase();
+      return blob.includes(q);
+    });
+    render();
+  }
+
+  async function load(){
+    // professores
+    const profSel = document.getElementById('prof');
+    const profs = await api('/api/gestao/professores');
+    profMap = new Map(profs.map(p => [p.id, p.username]));
+    profSel.innerHTML = '<option value="">Todos</option>' + profs.map(p => `<option value="${p.id}">${p.username}</option>`).join('');
+
+    // tutorias
+    allItems = await api('/api/gestao/tutorias');
+    filtered = [...allItems];
+
+    // Preenche o formulário do carimbo com o último valor encontrado (se existir)
+    const lastWithCarimbo = [...allItems].find(t => {
+      const c = t.carimbo || {};
+      return Boolean((c.resp || c.inst || c.contato || c.texto || c.obs) && String(c.resp || c.inst || c.contato || c.texto || c.obs).trim().length > 0);
+    });
+    if(lastWithCarimbo) fillCarimbo(lastWithCarimbo.carimbo);
+
+    render();
+  }
+
+  // Seleção em massa
+  document.getElementById('chkMaster').addEventListener('change', (e)=>{
+    const checked = e.target.checked;
+    document.querySelectorAll('input[data-id]').forEach(c => { c.checked = checked; });
+  });
+
+  document.getElementById('btnSelAll').addEventListener('click', ()=>{
+    document.querySelectorAll('input[data-id]').forEach(c => { c.checked = true; });
+    document.getElementById('chkMaster').checked = true;
+  });
+  document.getElementById('btnSelNone').addEventListener('click', ()=>{
+    document.querySelectorAll('input[data-id]').forEach(c => { c.checked = false; });
+    document.getElementById('chkMaster').checked = false;
+  });
+
+  // Apagar selecionadas
+  document.getElementById('btnDelSel').addEventListener('click', async ()=>{
+    const ids = getSelectedIds();
+    if(!ids.length) return alert('Selecione pelo menos 1 tutoria.');
+    const senha = prompt('Senha para apagar tutorias:');
+    if(!senha) return;
+    if(!confirm(`Apagar ${ids.length} tutorias selecionadas?`)) return;
+    try{
+      const r = await api('/api/gestao/tutorias/excluir', {method:'POST', body:JSON.stringify({ids, senha})});
+      alert(`Apagadas: ${r.apagadas}`);
+      await load();
+    }catch(e){ alert(e.message); }
+  });
+
+  // Apagar TODAS
+  document.getElementById('btnDelAll').addEventListener('click', async ()=>{
+    const senha = prompt('Senha para apagar tutorias:');
+    if(!senha) return;
+    const conf = prompt('Digite APAGAR_TODAS para confirmar:');
+    if(conf !== 'APAGAR_TODAS') return;
+    if(!confirm('Tem certeza absoluta?')) return;
+    try{
+      const r = await api('/api/gestao/tutorias', {method:'DELETE', body:JSON.stringify({senha, confirm:'APAGAR_TODAS'})});
+      alert(`Apagadas: ${r.apagadas}`);
+      await load();
+    }catch(e){ alert(e.message); }
+  });
+
+  // Carimbo - aplicar em TODAS
+  document.getElementById('btnCarimboAll').addEventListener('click', async ()=>{
+    try{
+      const payload = readCarimbo();
+      const r = await api('/api/gestao/carimbo', {method:'POST', body:JSON.stringify(payload)});
+      alert(`Carimbo aplicado em ${r.atualizadas} tutorias.`);
+      await load();
+    }catch(e){ alert(e.message); }
+  });
+
+  // Carimbo - aplicar nas SELECIONADAS
+  document.getElementById('btnCarimboSel').addEventListener('click', async ()=>{
+    const ids = getSelectedIds();
+    if(!ids.length) return alert('Selecione pelo menos 1 tutoria.');
+    try{
+      const payload = readCarimbo();
+      let ok = 0;
+      for(const id of ids){
+        await api(`/api/gestao/tutorias/${id}/carimbo`, {method:'POST', body:JSON.stringify(payload)});
+        ok += 1;
+      }
+      alert(`Carimbo aplicado em ${ok} tutorias selecionadas.`);
+      await load();
+    }catch(e){ alert(e.message); }
+  });
+
+  // Diagnóstico do banco (para conferir se o app e o DBeaver estão no MESMO banco)
+  document.getElementById('btnDbInfo').addEventListener('click', async ()=>{
+    try{
+      const r = await api('/api/gestao/dbinfo');
+      alert(
+        `DB OK\n\n`+
+        `dialect: ${r.dialect}\n`+
+        `db_url: ${r.db_url}\n`+
+        `tutorias (count): ${r.tutorias_count}\n`+
+        `tables: ${(r.tables||[]).join(', ')}`
+      );
+    }catch(e){ alert(e.message); }
+  });
+
+  // Filtrar
+  document.getElementById('btnFiltrar').addEventListener('click', applyFilter);
+
+  // aplica filtro automaticamente
+  document.getElementById('prof').addEventListener('change', applyFilter);
+  document.getElementById('q').addEventListener('input', ()=>{ window.clearTimeout(window._tutoria_qt); window._tutoria_qt=setTimeout(applyFilter, 250); });
+
+  document.getElementById('btnLimpar').addEventListener('click', ()=>{ document.getElementById('q').value=''; document.getElementById('prof').value=''; applyFilter(); });
+
+  // Ações por linha
+  document.addEventListener('click', async (e)=>{
+    const v = e.target.closest('button[data-view]');
+    if(v){
+      const id = v.dataset.view;
+      const sheet = document.querySelector(`[data-sheet="${id}"]`);
+      if(sheet){ document.getElementById('gModalBody').innerHTML = sheet.outerHTML; modal.show(); }
+      return;
+    }
+    const d = e.target.closest('button[data-del]');
+    if(d){
+      const id = parseInt(d.dataset.del, 10);
+      const senha = prompt('Senha para apagar tutorias:');
+      if(!senha) return;
+      if(!confirm(`Apagar a tutoria #${id}?`)) return;
+      try{
+        await api(`/api/gestao/tutorias/${id}`, {method:'DELETE', body:JSON.stringify({senha})});
+        await load();
+      }catch(e){ alert(e.message); }
+    }
+  });
+
+  setMode(localStorage.getItem('tutoria_gestao_view_mode') || 'lista');
+  load();
 </script>
 {% endblock %}

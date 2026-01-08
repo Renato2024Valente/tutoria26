@@ -1,21 +1,26 @@
-
 {% extends 'base.html' %}
-{% block title %}Gestão — Senha{% endblock %}
+{% set title = 'Gestão - PIN' %}
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-12 col-md-6 col-lg-4">
-    <div class="card">
-      <div class="card-body">
-        <h2 class="h5">Acesso Gestão</h2>
-        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-        <form method="post" action="/gestao">
-          <label class="form-label">Senha</label>
-          <input class="form-control mb-3" type="password" name="pin" placeholder="Digite a senha" required>
-          <div class="d-flex gap-2">
-            <button class="btn btn-warning">Entrar</button>
-            <a class="btn btn-secondary" href="/form">Voltar</a>
+  <div class="col-12 col-md-6 col-lg-5">
+    <div class="card app-card">
+      <div class="card-body p-4">
+        <h4 class="fw-bold mb-1">Gestão</h4>
+        <div class="soft mb-3">Digite o PIN para entrar no painel.</div>
+
+        {% if error %}
+          <div class="alert alert-danger py-2">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('gestao_pin_post') }}" class="vstack gap-3">
+          <div>
+            <label class="form-label">PIN da Gestão</label>
+            <input name="pin" type="password" class="form-control" placeholder="Senha" required>
           </div>
+          <button class="btn btn-primary btn-lg">Entrar</button>
         </form>
+
+        <div class="soft mt-3 small">Se você não tiver o PIN, peça para a gestão.</div>
       </div>
     </div>
   </div>

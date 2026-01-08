@@ -1,207 +1,341 @@
-
 {% extends 'base.html' %}
-{% block title %}Nova/Editar Tutoria{% endblock %}
+{% set title = 'Nova Tutoria - Tutoria 2026' %}
 {% block content %}
-<div class="card">
-  <div class="card-body">
-    <h2 class="h5">Formulário da Tutoria</h2>
-    <form id="formTutoria" class="mt-3">
-      {% if record and record.id %}<input type="hidden" name="id" value="{{record.id}}">{% endif %}
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Nome do tutor</label>
-          <input class="form-control" name="nome_tutor" required value="{{ record.nome_tutor if record else '' }}">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Nome do aluno</label>
-          <input class="form-control" name="nome_aluno" required value="{{ record.nome_aluno if record else '' }}">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Série</label>
-          <select class="form-select" name="serie" required>
-            <option value="">Escolha...</option>
-            {% for s in SERIES %}
-            <option value="{{s}}" {% if record and record.serie==s %}selected{% endif %}>{{s}}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Telefone (aluno)</label>
-          <input class="form-control" name="tel_aluno" value="{{ record.tel_aluno if record else '' }}">
-        </div>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">{% if record and record.id %}Editar{% else %}Nova{% endif %} Tutoria</h4>
+    <div class="soft">Preencha e salve. A visualização das tutorias fica em forma de lista.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('lista') }}" class="btn btn-outline-secondary">Minhas tutorias</a>
+  </div>
+</div>
 
-        <div class="col-12">
-          <label class="form-label d-flex justify-content-between align-items-center">
-            Contatos adicionais
-            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddContato">+ Adicionar contato</button>
-          </label>
-          <div id="contatosArea" class="vstack gap-2"></div>
-        </div>
+{% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
 
-        <div class="col-12">
-          <label class="form-label">Projeto de Vida</label>
-          <textarea class="form-control" rows="3" name="projeto_vida">{{ record.projeto_vida if record else '' }}</textarea>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Descrições (problemas e orientações)</label>
-          <textarea class="form-control" rows="4" name="descricoes">{{ record.descricoes if record else '' }}</textarea>
-        </div>
+<div class="card app-card">
+  <div class="card-body p-4">
+    <form id="tutoriaForm" method="post" action="{{ url_for('form_post') }}" class="row g-3">
+      <input type="hidden" name="id" value="{{ record.id if record and record.id else '' }}">
 
-        <div class="col-12">
-          <label class="form-label">Tipos de Assuntos</label>
-          <div class="row row-cols-2 row-cols-md-3 g-2">
-            {% set oc = record.ocorrencias.split(',') if record and record.ocorrencias else [] %}
-            {% for o in OCORRENCIAS %}
-            <div class="col">
-              <label class="form-check">
-                <input class="form-check-input" type="checkbox" name="ocorrencias" value="{{o}}" {% if o in oc %}checked{% endif %}>
-                <span class="form-check-label">{{o}}</span>
-              </label>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">Assinatura do aluno (toque/mouse)</label>
-          <div class="border rounded bg-white p-2">
-            <canvas id="sigCanvas" class="w-100" style="display:block; height: 180px;"></canvas>
-            <div class="d-flex gap-2 mt-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSigClear">Limpar</button>
-              {% if record and record.id %}
-              <button type="button" class="btn btn-sm btn-outline-success" id="btnPdfAtual">PDF desta tutoria</button>
-              {% endif %}
+      {% if record and record.id %}
+      <div class="col-12">
+        <label class="form-label">Ao salvar</label>
+        <div class="row g-2">
+          <div class="col-12 col-lg-6">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="save_mode" id="modeUpdate" value="update" checked>
+              <label class="form-check-label" for="modeUpdate">Editar esta tutoria (mantém assinatura atual)</label>
             </div>
           </div>
-          <input type="hidden" id="assinatura_data" name="assinatura_data" value="{{ record.assinatura if record else '' }}">
+          <div class="col-12 col-lg-6">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="save_mode" id="modeNova" value="nova">
+              <label class="form-check-label" for="modeNova">Criar uma NOVA tutoria a partir desta (assinatura nova)</label>
+            </div>
+          </div>
+        </div>
+        <div class="soft small mt-1">Se você escolher <b>NOVA</b>, a tutoria original é mantida e será criada outra com assinatura nova.</div>
+      </div>
+      {% endif %}
+
+      <div class="col-12 col-lg-6">
+        <label class="form-label">Nome do Tutor</label>
+        <input name="nome_tutor" class="form-control" value="{{ record.nome_tutor if record else '' }}" placeholder="Ex.: Prof. Renato">
+      </div>
+      <div class="col-12 col-lg-6">
+        <label class="form-label">Telefone do Aluno (opcional)</label>
+        <input name="tel_aluno" class="form-control" value="{{ record.tel_aluno if record else '' }}" placeholder="(xx) xxxxx-xxxx">
+      </div>
+
+      <div class="col-12 col-lg-8">
+        <label class="form-label">Nome do Aluno</label>
+        <input name="nome_aluno" class="form-control" required value="{{ record.nome_aluno if record else '' }}" placeholder="Nome completo">
+      </div>
+      <div class="col-12 col-lg-4">
+        <label class="form-label">Série/Turma</label>
+        <select name="serie" class="form-select" required>
+          <option value="">Selecione...</option>
+          {% for s in SERIES %}
+            <option value="{{ s }}" {% if record and record.serie==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Contatos extras (responsáveis / outros)</label>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddContato">+ Adicionar contato</button>
+          <span class="soft small">Ex.: Mãe/Pai/Responsável, telefone.</span>
+        </div>
+        <input type="hidden" name="contatos_extra" id="contatos_extra" value="[]">
+        <script type="application/json" id="contatosSeed">{{ contatos_json | safe }}</script>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle contacts-table">
+            <thead>
+              <tr><th>Nome</th><th>Telefone</th><th style="width:90px"></th></tr>
+            </thead>
+            <tbody id="contatosBody"></tbody>
+          </table>
         </div>
       </div>
 
-      <div class="d-flex gap-2 mt-4">
-        <button type="button" class="btn btn-success" id="btnSalvar">Salvar</button>
-        {% if record and record.id %}<a class="btn btn-outline-primary" href="/form?id={{record.id}}&duplicar=1">Duplicar e criar nova</a>{% endif %}
-        <a class="btn btn-secondary" href="/lista">Minhas tutorias</a>
+      <div class="col-12">
+        <label class="form-label">Projeto de Vida</label>
+        <textarea name="projeto_vida" class="form-control" rows="3" placeholder="Resumo do acompanhamento">{{ record.projeto_vida if record else '' }}</textarea>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Descrições / Ações / Observações</label>
+        <textarea name="descricoes" class="form-control" rows="4" placeholder="Descreva a tutoria">{{ record.descricoes if record else '' }}</textarea>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Ocorrências (marque se houver)</label>
+        {% set sel = (record.ocorrencias or '') if record else '' %}
+        {% set sel_list = sel.split(',') if sel else [] %}
+        <div class="row g-2">
+          {% for o in OCORRENCIAS %}
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="ocorrencias" value="{{ o }}" id="occ{{ loop.index }}" {% if o in sel_list %}checked{% endif %}>
+                <label class="form-check-label" for="occ{{ loop.index }}">{{ o }}</label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <label class="form-label">Assinatura</label>
+        <input type="hidden" name="assinatura" id="assinatura">
+
+        <div id="sigPreviewWrap" class="p-2 rounded-3" style="border:1px solid rgba(255,255,255,.18); display:none;">
+          {% if record and record.assinatura %}
+            <img src="{{ record.assinatura }}" alt="assinatura" style="max-width:360px;width:100%;border-radius:12px;" />
+          {% else %}
+            <div class="soft">Sem assinatura salva.</div>
+          {% endif %}
+          <div class="soft small mt-2">Para usar <b>assinatura nova</b>, selecione <b>Criar uma NOVA tutoria</b> acima.</div>
+        </div>
+
+        <div id="sigCanvasWrap" class="border rounded-3 p-2" style="background:rgba(255,255,255,.03);">
+          <canvas id="sig" width="520" height="180" style="width:100%; height:180px; touch-action:none; background:#fff;"></canvas>
+        </div>
+        <div id="sigTools" class="d-flex gap-2 mt-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearSig">Limpar</button>
+          <span class="soft small align-self-center">Desenhe com o mouse ou dedo.</span>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="d-flex flex-wrap gap-2 justify-content-end mt-2">
+          <a class="btn btn-outline-secondary" href="{{ url_for('lista') }}">Voltar para lista</a>
+          <button class="btn btn-primary btn-lg">Salvar tutoria</button>
+        </div>
       </div>
     </form>
   </div>
 </div>
-
-<!-- Área temporária para PDF no form -->
-<div id="print-form" class="printable mt-3 d-none"></div>
 {% endblock %}
 
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+{% block extra_js %}
 <script>
-const contatosArea = document.getElementById('contatosArea');
-const btnAddContato = document.getElementById('btnAddContato');
-function contatoRow(nome='', telefone=''){
-  const r = document.createElement('div');
-  r.className = 'row g-2 align-items-end border rounded p-2';
-  r.innerHTML = `
-    <div class="col-md-6">
-      <label class="form-label small">Nome</label>
-      <input class="form-control contato-nome" value="${nome}">
-    </div>
-    <div class="col-md-5">
-      <label class="form-label small">Telefone</label>
-      <input class="form-control contato-telefone" value="${telefone}">
-    </div>
-    <div class="col-md-1 d-grid">
-      <button type="button" class="btn btn-outline-danger btn-sm" title="Remover" onclick="this.closest('.row').remove()">✕</button>
-    </div>`;
-  return r;
-}
-if(btnAddContato){ btnAddContato.addEventListener('click', ()=> contatosArea.appendChild(contatoRow())); }
-try {
-  const arr = JSON.parse('{{ contatos_json|safe }}');
-  (Array.isArray(arr) ? arr : []).forEach(c => contatosArea.appendChild(contatoRow(c.nome || '', c.telefone || '')));
-} catch (e) {}
-
-let sigCanvas=document.getElementById('sigCanvas'), ctx=sigCanvas.getContext('2d'), loaded=false;
-function sizeCanvas(){
-  const rect = sigCanvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  sigCanvas.width = Math.max(500, rect.width) * ratio;
-  sigCanvas.height = 180 * ratio;
-  sigCanvas.style.height='180px';
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.scale(ratio, ratio);
-  ctx.lineWidth = 2; ctx.lineCap='round'; ctx.strokeStyle = '#000';
-  const saved = document.getElementById('assinatura_data').value;
-  if(saved && !loaded){
-    const img=new Image(); img.onload=()=>{ ctx.drawImage(img,0,0,rect.width,180); loaded=true; }; img.src=saved;
+  // ----- contatos extras -----
+  function safeParse(json, fallback){
+    try{ return JSON.parse(json); }catch{ return fallback; }
   }
-}
-function evPt(e){ if(e.touches&&e.touches.length){const t=e.touches[0];return {x:t.clientX,y:t.clientY};} return {x:e.clientX,y:e.clientY};}
-function rel(p){ const r=sigCanvas.getBoundingClientRect(); return {x:p.x-r.left, y:p.y-r.top};}
-let drawing=false,last=null;
-function start(e){ drawing=true; last=rel(evPt(e)); e.preventDefault(); }
-function move(e){ if(!drawing) return; const p=rel(evPt(e)); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; e.preventDefault(); }
-function end(e){ drawing=false; e.preventDefault(); }
-function sigClear(){ ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height); document.getElementById('assinatura_data').value=''; }
-window.addEventListener('resize', sizeCanvas);
-sigCanvas.addEventListener('mousedown', start); sigCanvas.addEventListener('mousemove', move); sigCanvas.addEventListener('mouseup', end); sigCanvas.addEventListener('mouseleave', end);
-sigCanvas.addEventListener('touchstart', start, {passive:false}); sigCanvas.addEventListener('touchmove', move, {passive:false}); sigCanvas.addEventListener('touchend', end, {passive:false});
-sizeCanvas();
-document.getElementById('btnSigClear')?.addEventListener('click', sigClear);
+  const contatosInput = document.getElementById('contatos_extra');
+  const seedEl = document.getElementById('contatosSeed');
+  const seedJson = seedEl ? seedEl.textContent.trim() : (contatosInput.value || '[]');
+  let contatos = safeParse(seedJson || '[]', []);
+  const body = document.getElementById('contatosBody');
 
-// Salvar
-document.getElementById('btnSalvar').addEventListener('click', async ()=>{
-  const contatos = Array.from(document.querySelectorAll('#contatosArea .row')).map(r=>({nome:r.querySelector('.contato-nome').value.trim(), telefone:r.querySelector('.contato-telefone').value.trim()})).filter(c=>c.nome||c.telefone);
-  const hidden = document.getElementById('assinatura_data');
-  hidden.value = sigCanvas.toDataURL('image/png');
-  const f = document.getElementById('formTutoria');
-  const data = Object.fromEntries(new FormData(f).entries());
-  data.ocorrencias = Array.from(f.querySelectorAll('input[name="ocorrencias"]:checked')).map(i=>i.value);
-  data.contatos_extra = contatos;
-  data.assinatura = hidden.value;
-  const id = data.id; delete data.id;
-  try{
-    if(id) await axios.put(`/api/tutorias/${id}`, data);
-    else await axios.post('/api/tutorias', data);
-    alert('Salvo com sucesso!');
-    window.location.href = '/lista';
-  }catch(e){ console.error(e); alert('Erro ao salvar.'); }
-});
+  function renderContatos(){
+    body.innerHTML = '';
+    contatos.forEach((c, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="form-control form-control-sm" value="${c.nome||''}" data-k="nome" data-i="${idx}"></td>
+        <td><input class="form-control form-control-sm" value="${c.telefone||''}" data-k="telefone" data-i="${idx}"></td>
+        <td><button type="button" class="btn btn-outline-danger btn-sm" data-del="${idx}">Remover</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    contatosInput.value = JSON.stringify(contatos);
+  }
 
-// PDF na página do formulário (quando estiver editando uma tutoria salva)
-async function gerarPdfAtual(){
-  const f = document.getElementById('formTutoria');
-  const get = name => f.querySelector(`[name="${name}"]`)?.value || '';
-  const ocorr = Array.from(f.querySelectorAll('input[name="ocorrencias"]:checked')).map(i=>i.value);
-  const assinaturaData = sigCanvas.toDataURL('image/png');
-  const now = new Date().toLocaleString('pt-BR');
 
-  const alvo = document.getElementById('print-form');
-  alvo.classList.remove('d-none');
-  alvo.innerHTML = `
-    <h3 class="h6 text-center mb-2">Tutoria Digital — Formulário</h3>
-    <div class="row small">
-      <div class="col-6"><b>Tutor:</b> ${get('nome_tutor')||'—'}</div>
-      <div class="col-6"><b>Aluno:</b> ${get('nome_aluno')||'—'}</div>
-      <div class="col-3"><b>Série:</b> ${get('serie')||'—'}</div>
-      <div class="col-3"><b>Data/Hora:</b> ${now}</div>
-      <div class="col-6"><b>Telefone aluno:</b> ${get('tel_aluno')||'—'}</div>
-      <div class="col-12 mt-2"><b>Projeto de Vida:</b><br>${get('projeto_vida')||'-'}</div>
-      <div class="col-12 mt-2"><b>Descrições (problemas e orientações):</b><br>${get('descricoes')||'-'}</div>
-      <div class="col-12 mt-2"><b>Ocorrências:</b> ${ocorr.join(', ')||'-'}</div>
-      <div class="col-12 mt-2"><b>Assinatura do aluno:</b><br><img src="${assinaturaData}" style="max-width:280px;border:1px solid #000;"></div>
-    </div>
-  `;
+  function collectFromDOM(){
+    const rows = Array.from(body.querySelectorAll('tr'));
+    const collected = rows.map((tr) => {
+      const nome = (tr.querySelector('input[data-k="nome"]')?.value || '').trim();
+      const telefone = (tr.querySelector('input[data-k="telefone"]')?.value || '').trim();
+      return {nome, telefone};
+    }).filter(c => c.nome || c.telefone);
+    contatos = collected;
+    contatosInput.value = JSON.stringify(contatos);
+  }
 
-  const canvas = await html2canvas(alvo, {scale:2, useCORS:true});
-  const imgData = canvas.toDataURL('image/png');
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p','mm','a4');
-  const pageWidth = 210;
-  const imgWidth = pageWidth - 20;
-  const imgHeight = canvas.height * imgWidth / canvas.width;
-  pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-  pdf.save('tutoria-form.pdf');
-  alvo.classList.add('d-none');
-}
-document.getElementById('btnPdfAtual')?.addEventListener('click', gerarPdfAtual);
+  body.addEventListener('input', (e) => {
+    const el = e.target;
+    if(!el.dataset || el.dataset.i===undefined) return;
+    const i = parseInt(el.dataset.i, 10);
+    contatos[i][el.dataset.k] = el.value;
+    contatosInput.value = JSON.stringify(contatos);
+  });
+
+  body.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-del]');
+    if(!btn) return;
+    const i = parseInt(btn.dataset.del, 10);
+    contatos.splice(i, 1);
+    renderContatos();
+  });
+
+  document.getElementById('btnAddContato').addEventListener('click', () => {
+    contatos.push({nome:'', telefone:''});
+    renderContatos();
+  });
+
+  renderContatos();
+
+  // ----- assinatura -----
+  const canvas = document.getElementById('sig');
+  const ctx = canvas.getContext('2d');
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  const sigSeed = {{ (record.assinatura if record else '') | tojson }};
+  const isEdit = {{ 'true' if record and record.id else 'false' }};
+
+  const previewWrap = document.getElementById('sigPreviewWrap');
+  const canvasWrap = document.getElementById('sigCanvasWrap');
+  const sigTools = document.getElementById('sigTools');
+
+  let drawing = false;
+
+  function clearSig(){
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+  }
+
+  function loadSignature(dataUrl){
+    if(!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      clearSig();
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = dataUrl;
+  }
+
+  function getMode(){
+    const el = document.querySelector('input[name="save_mode"]:checked');
+    return el ? el.value : '';
+  }
+
+  function setSigMode(mode){
+    if(!isEdit){
+      if(previewWrap) previewWrap.style.display = 'none';
+      if(canvasWrap) canvasWrap.style.display = '';
+      if(sigTools) sigTools.style.display = '';
+      return;
+    }
+
+    if(mode === 'nova'){
+      if(previewWrap) previewWrap.style.display = 'none';
+      if(canvasWrap) canvasWrap.style.display = '';
+      if(sigTools) sigTools.style.display = '';
+      clearSig();
+    } else {
+      if(previewWrap) previewWrap.style.display = '';
+      if(canvasWrap) canvasWrap.style.display = 'none';
+      if(sigTools) sigTools.style.display = 'none';
+      if(sigSeed) loadSignature(sigSeed);
+    }
+  }
+
+  function getPos(e){
+    const r = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return {x, y};
+  }
+
+  function startDraw(e){
+    if(canvasWrap && canvasWrap.style.display === 'none') return;
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    e.preventDefault();
+  }
+  function moveDraw(e){
+    if(!drawing) return;
+    if(canvasWrap && canvasWrap.style.display === 'none') return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    e.preventDefault();
+  }
+  function endDraw(e){
+    drawing = false;
+    e.preventDefault();
+  }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', moveDraw);
+  window.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('touchstart', startDraw, {passive:false});
+  canvas.addEventListener('touchmove', moveDraw, {passive:false});
+  window.addEventListener('touchend', endDraw, {passive:false});
+
+  document.getElementById('btnClearSig').addEventListener('click', () => {
+    clearSig();
+  });
+
+  // inicialização
+  if(isEdit){
+    setSigMode('update');
+    const r = document.getElementById('modeUpdate');
+    const n = document.getElementById('modeNova');
+    if(r) r.addEventListener('change', () => setSigMode(getMode()));
+    if(n) n.addEventListener('change', () => setSigMode(getMode()));
+  } else {
+    // Nova ou duplicar: se veio assinatura, carrega no canvas para duplicar automaticamente
+    if(sigSeed) loadSignature(sigSeed);
+    if(previewWrap) previewWrap.style.display = 'none';
+    if(canvasWrap) canvasWrap.style.display = '';
+    if(sigTools) sigTools.style.display = '';
+  }
+
+  document.getElementById('tutoriaForm').addEventListener('submit', (e) => {
+    // garante que os contatos extras sejam salvos mesmo se algum campo não disparou 'input'
+    collectFromDOM();
+
+    const mode = getMode();
+
+    // Editar mesma: mantém assinatura atual (não substitui)
+    if(isEdit && mode !== 'nova'){
+      document.getElementById('assinatura').value = '';
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL('image/png');
+    const blank = document.createElement('canvas');
+    blank.width = canvas.width; blank.height = canvas.height;
+    const isBlank = dataUrl === blank.toDataURL('image/png');
+
+    if(isEdit && mode === 'nova' && isBlank){
+      e.preventDefault();
+      alert('Para criar uma NOVA tutoria, faça a assinatura.');
+      return;
+    }
+
+    document.getElementById('assinatura').value = isBlank ? '' : dataUrl;
+  });
+
 </script>
 {% endblock %}

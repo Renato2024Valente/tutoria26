@@ -129,9 +129,35 @@ select option{
 }
 
 /* ---------- Tabelas ---------- */
-.table{color:var(--text-strong);border-color:var(--line);}
+.table{
+  color:var(--text-strong);
+  border-color:var(--line);
+
+  /* Bootstrap usa variáveis CSS para o fundo (que por padrão é branco).
+     Forçamos transparente para combinar com o tema escuro. */
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-strong);
+  --bs-table-striped-bg: rgba(255,255,255,.04);
+  --bs-table-striped-color: var(--text-strong);
+  --bs-table-hover-bg: rgba(255,255,255,.05);
+  --bs-table-hover-color: var(--text-strong);
+  --bs-table-active-bg: rgba(255,255,255,.08);
+  --bs-table-active-color: var(--text-strong);
+}
+
 .table td,.table th{border-color:var(--line);}
-.table thead th{color:#f0f6ff}
+
+/* remove o “branco” herdado dos cells */
+.table > :not(caption) > * > *{ background-color: transparent !important; }
+
+/* cabeçalho com leve contraste */
+.table thead th{
+  color:#f0f6ff;
+  background: rgba(255,255,255,.04) !important;
+}
+
+/* caso alguma view ainda use table-light */
+.table-light{ background: transparent !important; }
 
 /* ---------- Alertas ---------- */
 .alert{
@@ -176,3 +202,83 @@ a:hover{color:#cfe4ff;}
   border:1px dashed rgba(0,0,0,.25);
   border-radius:10px;
 }
+
+/* =========================
+   Helpers (Lista/Impressa, chips, sheets)
+   ========================= */
+
+/* texto secundário usado nas telas novas */
+.soft{ color: rgba(232,238,248,.78) !important; }
+
+/* pílulas (ocorrências, tags) */
+.chip{
+  display:inline-block;
+  padding:.25rem .55rem;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);
+  font-size:.8rem;
+  margin:.1rem .15rem;
+}
+
+/* controle de alternância Lista/Impressa */
+.toggle-pill{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.16);
+  padding:.35rem .45rem;
+  border-radius:999px;
+  display:inline-flex;
+  gap:.35rem;
+  align-items:center;
+  backdrop-filter: blur(6px) saturate(1.2);
+}
+.toggle-pill .btn{ border-radius:999px; }
+
+/* "folha" do modo impresso (na tela) */
+.sheet{
+  background:var(--surface) !important;
+  border:1px solid var(--surface-bd) !important;
+  border-radius:var(--radius);
+  padding:18px;
+  box-shadow:var(--elev);
+}
+
+.line{ border-bottom:1px solid rgba(255,255,255,.12); height:1px; margin:.45rem 0 .65rem; }
+.label{ font-size:.78rem; color: rgba(232,238,248,.62); text-transform:uppercase; letter-spacing:.08em; }
+.value{ font-size:1rem; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* compat: algumas telas usam app-card */
+.app-card{ border:0; }
+
+/* Modals no tema escuro */
+.modal-content{
+  background:var(--surface) !important;
+  border:1px solid var(--surface-bd) !important;
+  border-radius:var(--radius);
+  color:var(--text-strong) !important;
+}
+.modal-header{ border-bottom:1px solid rgba(255,255,255,.10) !important; }
+.modal-footer{ border-top:1px solid rgba(255,255,255,.10) !important; }
+.btn-close{ filter: invert(1) grayscale(100%); opacity:.85; }
+
+/* Tabela "table-light" do Bootstrap em modo escuro */
+.table-light{
+  --bs-table-bg: rgba(255,255,255,.03);
+  --bs-table-striped-bg: rgba(255,255,255,.04);
+  --bs-table-color: var(--text-strong);
+  --bs-table-border-color: var(--line);
+}
+
+/* hover de tabela mais sutil no escuro */
+.table-hover>tbody>tr:hover>*{ background-color: rgba(255,255,255,.04) !important; }
+
+
+/* ---------- Contatos extras (tabela dentro do formulário) ---------- */
+.contacts-table{--bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,.03); --bs-table-hover-bg: rgba(255,255,255,.05);}
+.contacts-table thead th{background: rgba(255,255,255,.06);}
+
+
+/* --- Gestão: separação por professor --- */
+.group-row td{background: rgba(255,255,255,0.06); font-weight: 700;}
+.group-title{background: rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 14px;}

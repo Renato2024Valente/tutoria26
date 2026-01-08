@@ -1,13 +1,38 @@
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, abort, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import create_engine, Integer, String, DateTime, Text, ForeignKey, inspect, text as sqltext
 from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship, sessionmaker, scoped_session
-import os, json, re
+import os, json, re, io, base64
 from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
+
+# PDF
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.lib.utils import ImageReader
 
 load_dotenv()
+
+# ---- Timezone (Brasília) ----
+BR_TZ = ZoneInfo('America/Sao_Paulo')
+
+def _dt_to_br(dt):
+    """Converte datetime (naive->assume UTC) para horário de Brasília."""
+    if not dt:
+        return None
+    if getattr(dt, 'tzinfo', None) is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    try:
+        return dt.astimezone(BR_TZ)
+    except Exception:
+        return dt
+
+def _iso_br(dt):
+    d = _dt_to_br(dt)
+    return d.isoformat() if d else ''
 
 class Base(DeclarativeBase):
     pass
@@ -113,6 +138,23 @@ SessionLocal = scoped_session(sessionmaker(bind=engine, expire_on_commit=False))
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
+@app.template_filter('dtbr')
+def dtbr(dt, fmt='%d/%m/%Y %H:%M'):
+    """Formata datetime em horário de Brasília."""
+    d = _dt_to_br(dt)
+    return d.strftime(fmt) if d else ''
+@app.template_filter('fromjson')
+def fromjson_filter(val, default=None):
+    """Converte string JSON em objeto python para usar nos templates."""
+    if default is None:
+        default = []
+    try:
+        return json.loads(val) if val else default
+    except Exception:
+        return default
+
+
+
 SERIES = ['6A','6B','6C','6D','7A','7B','7C','7D','8A','8B','8C','8D','9A','9B','9C','9D','1EM-A','1EM-B','1EM-C','2EM-A','2TEC','3EM-A','3EM-B']
 OCORRENCIAS = ['Pessoal','Pedagogico','Familia','Prova paulista','Notas Bimestrais','Conflitos/Bullying','Comportamentos','Desatenção','Desrespeito','Emergencial']
 
@@ -204,6 +246,115 @@ def form():
     db.close()
     return render_template('form.html', SERIES=SERIES, OCORRENCIAS=OCORRENCIAS, record=record, contatos_json=contatos_json)
 
+@app.post('/form')
+def form_post():
+    """Salva a tutoria (create/update) via formulário HTML."""
+    if not session.get('uid'):
+        return redirect(url_for('login_get'))
+
+    tid = (request.form.get('id') or '').strip()
+    nome_tutor = (request.form.get('nome_tutor') or '').strip()
+    nome_aluno = (request.form.get('nome_aluno') or '').strip()
+    serie = (request.form.get('serie') or '').strip()
+    tel_aluno = (request.form.get('tel_aluno') or '').strip()
+    contatos_extra = (request.form.get('contatos_extra') or '[]').strip()
+    projeto_vida = (request.form.get('projeto_vida') or '').strip()
+    descricoes = (request.form.get('descricoes') or '').strip()
+    ocorrencias = request.form.getlist('ocorrencias')
+    assinatura = (request.form.get('assinatura') or '').strip()
+    save_mode = (request.form.get('save_mode') or '').strip().lower()  # 'update' | 'nova'
+
+    if not nome_aluno or not serie:
+        return render_template(
+            'form.html',
+            SERIES=SERIES,
+            OCORRENCIAS=OCORRENCIAS,
+            record=None,
+            contatos_json=contatos_extra or '[]',
+            error='Preencha pelo menos Nome do Aluno e Série/Turma.'
+        )
+
+    # valida JSON de contatos
+    try:
+        json.loads(contatos_extra or '[]')
+    except Exception:
+        contatos_extra = '[]'
+
+    db = SessionLocal()
+
+    # update
+    if tid and tid.isdigit():
+        t = db.get(Tutoria, int(tid))
+        if not t:
+            db.close()
+            abort(404)
+        if session.get('role') != 'gestao' and t.professor_id != session['uid']:
+            db.close()
+            abort(403)
+
+        # Se o usuário escolheu "Criar NOVA" a partir desta, não altera a original.
+        if save_mode == 'nova':
+            # exige nova assinatura
+            if not assinatura:
+                db.close()
+                return render_template(
+                    'form.html',
+                    SERIES=SERIES,
+                    OCORRENCIAS=OCORRENCIAS,
+                    record=t,
+                    contatos_json=contatos_extra or '[]',
+                    error='Para criar uma NOVA tutoria a partir desta, faça uma nova assinatura.'
+                )
+
+            t_new = Tutoria(
+                professor_id=t.professor_id,
+                nome_tutor=nome_tutor,
+                nome_aluno=nome_aluno,
+                serie=serie,
+                tel_aluno=tel_aluno,
+                contatos_extra=contatos_extra,
+                projeto_vida=projeto_vida,
+                descricoes=descricoes,
+                ocorrencias=','.join([o for o in ocorrencias if o]),
+                assinatura=assinatura,
+            )
+            db.add(t_new)
+            db.commit()
+            db.close()
+            return redirect(url_for('lista'))
+
+        # Modo normal: atualiza a MESMA tutoria e MANTÉM a assinatura existente
+        t.nome_tutor = nome_tutor
+        t.nome_aluno = nome_aluno
+        t.serie = serie
+        t.tel_aluno = tel_aluno
+        t.contatos_extra = contatos_extra
+        t.projeto_vida = projeto_vida
+        t.descricoes = descricoes
+        t.ocorrencias = ','.join([o for o in ocorrencias if o])
+        # assinatura NÃO é alterada no modo de edição padrão
+        db.commit()
+        db.close()
+        return redirect(url_for('lista'))
+
+    # create
+    t = Tutoria(
+        professor_id=session['uid'],
+        nome_tutor=nome_tutor,
+        nome_aluno=nome_aluno,
+        serie=serie,
+        tel_aluno=tel_aluno,
+        contatos_extra=contatos_extra,
+        projeto_vida=projeto_vida,
+        descricoes=descricoes,
+        ocorrencias=','.join([o for o in ocorrencias if o]),
+        assinatura=assinatura,
+    )
+    db.add(t)
+    db.commit()
+    db.close()
+    return redirect(url_for('lista'))
+
 @app.get('/lista')
 def lista():
     if not session.get('uid'): return redirect(url_for('login_get'))
@@ -273,7 +424,237 @@ def api_g_dbinfo():
         db.close()
     except Exception:
         info['count_tutorias'] = None
-    return jsonify({'ok': True, **info})
+    # Compat com o frontend (campos esperados no alert)
+    return jsonify({
+        'ok': True,
+        **info,
+        'db_url': info.get('database_url'),
+        'tutorias_count': info.get('count_tutorias'),
+    })
+
+
+# ---------- PDF (Impressão) ----------
+def _safe_filename(name: str) -> str:
+    name = (name or '').strip()
+    name = re.sub(r'[^a-zA-Z0-9._-]+', '_', name)
+    return name.strip('_') or 'tutoria'
+
+def _draw_wrapped(c: canvas.Canvas, text: str, x: float, y: float, max_w: float, font: str, size: int, leading: int = 14):
+    """Desenha texto quebrando linhas. Retorna novo y."""
+    c.setFont(font, size)
+    if not text:
+        return y
+    # normaliza quebras
+    text = str(text).replace('\r\n', '\n').replace('\r', '\n')
+    for para in text.split('\n'):
+        words = para.split(' ')
+        line = ''
+        for w in words:
+            test = (line + ' ' + w).strip()
+            if stringWidth(test, font, size) <= max_w:
+                line = test
+            else:
+                c.drawString(x, y, line)
+                y -= leading
+                line = w
+        if line:
+            c.drawString(x, y, line)
+            y -= leading
+        # espaço entre parágrafos
+        y -= 2
+    return y
+
+def _maybe_new_page(c: canvas.Canvas, y: float, min_y: float = 80):
+    if y < min_y:
+        c.showPage()
+        w, h = A4
+        return h - 50
+    return y
+
+def _parse_data_url(data_url: str):
+    if not data_url:
+        return None
+    if ',' not in data_url:
+        return None
+    head, b64 = data_url.split(',', 1)
+    try:
+        raw = base64.b64decode(b64)
+        return raw
+    except Exception:
+        return None
+
+def build_tutoria_pdf(t: Tutoria, professor_nome: str) -> bytes:
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    w, h = A4
+    margin = 50
+    y = h - margin
+
+    # Cabeçalho
+    c.setFont('Helvetica-Bold', 16)
+    c.drawString(margin, y, 'Tutoria 2026')
+    y -= 22
+    c.setFont('Helvetica', 10)
+    dt = (_dt_to_br(t.criado_em).strftime('%d/%m/%Y %H:%M') if t.criado_em else '')
+    c.drawString(margin, y, f'ID #{t.id}   Data: {dt}   Professor: {professor_nome}')
+    y -= 12
+    c.line(margin, y, w - margin, y)
+    y -= 18
+
+    def field(label, value):
+        nonlocal y
+        y = _maybe_new_page(c, y)
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(margin, y, label)
+        y -= 12
+        y = _draw_wrapped(c, value or '', margin, y, w - 2*margin, 'Helvetica', 11, leading=14)
+        y -= 6
+
+    # Campos
+    field('Tutor', t.nome_tutor or '')
+    field('Aluno', t.nome_aluno or '')
+    field('Série/Turma', t.serie or '')
+    field('Telefone do aluno', t.tel_aluno or '')
+
+    # Contatos extras
+    y = _maybe_new_page(c, y)
+    c.setFont('Helvetica-Bold', 10)
+    c.drawString(margin, y, 'Contatos extras (responsáveis / outros)')
+    y -= 14
+    try:
+        contatos = json.loads(t.contatos_extra or '[]')
+        if not isinstance(contatos, list):
+            contatos = []
+    except Exception:
+        contatos = []
+    if not contatos:
+        c.setFont('Helvetica', 11)
+        c.drawString(margin, y, 'Nenhum.')
+        y -= 16
+    else:
+        c.setFont('Helvetica-Bold', 10)
+        c.drawString(margin, y, 'Nome')
+        c.drawString(margin + 300, y, 'Telefone')
+        y -= 10
+        c.line(margin, y, w - margin, y)
+        y -= 14
+        c.setFont('Helvetica', 11)
+        for ctt in contatos:
+            y = _maybe_new_page(c, y)
+            nome = (ctt.get('nome') or '').strip() if isinstance(ctt, dict) else ''
+            tel = (ctt.get('telefone') or '').strip() if isinstance(ctt, dict) else ''
+            c.drawString(margin, y, nome or '-')
+            c.drawString(margin + 300, y, tel or '-')
+            y -= 16
+        y -= 4
+
+    # Textos
+    field('Projeto de Vida', t.projeto_vida or '')
+    field('Descrições / Observações', t.descricoes or '')
+
+    # Ocorrências
+    y = _maybe_new_page(c, y)
+    c.setFont('Helvetica-Bold', 10)
+    c.drawString(margin, y, 'Ocorrências')
+    y -= 14
+    occs = (t.ocorrencias or '').split(',') if t.ocorrencias else []
+    occs = [o.strip() for o in occs if o.strip()]
+    if not occs:
+        c.setFont('Helvetica', 11)
+        c.drawString(margin, y, 'Nenhuma marcada.')
+        y -= 16
+    else:
+        y = _draw_wrapped(c, ' • ' + '\n • '.join(occs), margin, y, w - 2*margin, 'Helvetica', 11, leading=14)
+
+    # Assinatura + Carimbo (parte inferior)
+    y = _maybe_new_page(c, y)
+    c.setFont('Helvetica-Bold', 10)
+    c.drawString(margin, y, 'Assinatura')
+    y -= 14
+
+    sig_raw = _parse_data_url(t.assinatura or '')
+    if sig_raw:
+        try:
+            img = ImageReader(io.BytesIO(sig_raw))
+            iw, ih = img.getSize()
+            max_w = 320
+            scale = min(1.0, max_w / float(iw))
+            sw = iw * scale
+            sh = ih * scale
+            y = _maybe_new_page(c, y, min_y=margin + sh + 120)
+            c.drawImage(img, margin, y - sh, width=sw, height=sh, mask='auto')
+            y -= sh + 10
+        except Exception:
+            c.setFont('Helvetica', 11)
+            c.drawString(margin, y, 'Sem assinatura (erro ao carregar imagem).')
+            y -= 16
+    else:
+        c.setFont('Helvetica', 11)
+        c.drawString(margin, y, 'Sem assinatura.')
+        y -= 16
+
+    # Carimbo
+    y = _maybe_new_page(c, y, min_y=margin + 120)
+    c.setFont('Helvetica-Bold', 10)
+    c.drawString(margin, y, 'Carimbo')
+    y -= 12
+    car_texto = (t.carimbo_texto or 'ÊXITO VISTADO').strip()
+    car_inst = (t.carimbo_inst or '').strip()
+    car_cont = (t.carimbo_contato or '').strip()
+    car_resp = (t.carimbo_resp or '').strip()
+    car_obs = (t.carimbo_obs or '').strip()
+    has_carimbo = any([car_texto, car_inst, car_cont, car_resp, car_obs])
+    if not has_carimbo:
+        c.setFont('Helvetica', 11)
+        c.drawString(margin, y, 'Sem carimbo.')
+        y -= 16
+    else:
+        box_h = 90 + (18 if car_obs else 0)
+        y = _maybe_new_page(c, y, min_y=margin + box_h + 40)
+        x0 = margin
+        y0 = y - box_h
+        c.roundRect(x0, y0, w - 2*margin, box_h, 10, stroke=1, fill=0)
+        c.setFont('Helvetica-Bold', 12)
+        c.drawString(x0 + 12, y - 18, car_texto)
+        c.setFont('Helvetica', 10)
+        if car_inst:
+            c.drawString(x0 + 12, y - 34, car_inst)
+        if car_cont:
+            c.drawString(x0 + 12, y - 48, car_cont)
+        if car_resp:
+            c.setFont('Helvetica-Bold', 10)
+            c.drawRightString(x0 + (w - 2*margin) - 12, y - 34, 'Responsável')
+            c.setFont('Helvetica', 10)
+            c.drawRightString(x0 + (w - 2*margin) - 12, y - 48, car_resp)
+        if car_obs:
+            c.setFont('Helvetica', 9)
+            y_obs = y0 + 10
+            _draw_wrapped(c, car_obs, x0 + 12, y_obs + 10, w - 2*margin - 24, 'Helvetica', 9, leading=11)
+
+        y = y0 - 10
+
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+@app.get('/tutorias/<int:tid>/pdf')
+def tutoria_pdf(tid: int):
+    """Gera PDF individual de uma tutoria."""
+    if not session.get('uid'):
+        return redirect(url_for('login_get'))
+    db = SessionLocal()
+    t = db.get(Tutoria, tid)
+    if not t:
+        db.close(); abort(404)
+    if session.get('role') != 'gestao' and t.professor_id != session['uid']:
+        db.close(); abort(403)
+    prof = db.get(User, t.professor_id)
+    professor_nome = prof.username if prof else str(t.professor_id)
+    pdf_bytes = build_tutoria_pdf(t, professor_nome)
+    db.close()
+    filename = _safe_filename(f"tutoria_{t.id}_{t.nome_aluno}.pdf")
+    return send_file(io.BytesIO(pdf_bytes), mimetype='application/pdf', as_attachment=False, download_name=filename)
 
 @app.get('/api/gestao/professores')
 def api_g_professores():
@@ -310,7 +691,7 @@ def api_g_tutorias():
                 'texto': t.carimbo_texto,
                 'obs': t.carimbo_obs,
             },
-            'criado_em': t.criado_em.isoformat(),
+            'criado_em': _iso_br(t.criado_em),
         })
     db.close()
     return jsonify(res)
