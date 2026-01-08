@@ -282,3 +282,30 @@ a:hover{color:#cfe4ff;}
 /* --- Gestão: separação por professor --- */
 .group-row td{background: rgba(255,255,255,0.06); font-weight: 700;}
 .group-title{background: rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 14px;}
+
+
+
+/* =========================
+   MOBILE IMPROVEMENTS
+   ========================= */
+@media (max-width: 576px){
+  body{ font-size: 16px; } /* evita zoom no iOS em inputs */
+  .container{ padding-left: 14px; padding-right: 14px; }
+  .app-card .card-body{ padding: 16px !important; }
+  .toggle-pill{ width: 100%; justify-content: space-between; }
+  .toggle-pill .btn{ flex: 1; }
+  .navbar .navbar-brand{ font-size: 1rem; }
+  .table-responsive{ -webkit-overflow-scrolling: touch; }
+  /* inputs/seletores com 16px para evitar zoom em iPhone */
+  input, select, textarea{ font-size: 16px; }
+  /* assinatura: um pouco mais baixa no celular */
+  #sig{ height: 160px !important; }
+  /* botões mais fáceis de tocar */
+  .btn{ padding-top: .55rem; padding-bottom: .55rem; }
+}
+
+@media (max-width: 576px){
+  .toolbar-actions{ width: 100%; }
+  .toolbar-actions > *{ width: 100%; }
+  .toolbar-actions .btn, .toolbar-actions a.btn{ width: 100%; }
+}
