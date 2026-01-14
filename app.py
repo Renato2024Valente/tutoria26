@@ -155,7 +155,7 @@ def fromjson_filter(val, default=None):
 
 
 
-SERIES = ['6A','6B','6C','6D','7A','7B','7C','7D','8A','8B','8C','8D','9A','9B','9C','9D','1EM-A','1EM-B','1EM-C','2EM-A','2TEC','3EM-A','3EM-B']
+SERIES = ['6A','6B','6C','6D','6E','7A','7B','7C','7D','8A','8B','8C','8D','9A','9B','9C','9D','1EM-A','1EM-B','1EM-C','1EM-D','2EM-A','2TEC','3EM-A','3EM-B']
 OCORRENCIAS = ['Pessoal','Pedagogico','Familia','Prova paulista','Notas Bimestrais','Conflitos/Bullying','Comportamentos','Desatenção','Desrespeito','Emergencial']
 
 def ensure_seed():
